@@ -1,0 +1,45 @@
+fx-880BTG PLUS — HƯỚNG DẪN DEMO
+
+MỞ DEMO
+Giải nén toàn bộ gói, mở MO-DEMO.html bằng Chrome hoặc Edge.
+Không cần cài đặt, không cần kết nối mạng. Hình máy, font và LCD đã nằm trong tệp.
+Trên điện thoại, nên dùng bản được đưa lên website; mở HTML từ ứng dụng quản lý tệp
+có thể không chạy được JavaScript như trình duyệt thông thường.
+
+CÁCH BẤM
+Bấm trực tiếp lên từng phím của máy hoặc dùng bàn phím máy tính.
+Enter hoặc =: EXE. Esc: AC. Backspace/Delete: DEL. Home: HOME.
+F1: SHIFT. F2: SETTINGS. Các phím mũi tên: di chuyển.
+f: phân số. r: căn bậc hai. ^: lũy thừa. d: FORMAT.
+Nhấn SHIFT rồi phím cần dùng chức năng phụ. Số âm: SHIFT rồi dấu trừ.
+Đổi màu bằng bốn chấm tròn. “Phím tắt” mở hướng dẫn ngay bên cạnh máy.
+
+TRƯỚC BUỔI TRÌNH CHIẾU
+HOME → 1 → SETTINGS → 3 → 3 → 1 → 1: Khởi tạo tất cả.
+Đưa máy về HOME. Chọn màu muốn trình chiếu. Đóng các bảng tiện ích khi không dùng.
+Khởi tạo tất cả xóa dữ liệu đang nhập và trả cài đặt về mặc định.
+
+BÀI MẪU
+1. Tính thường: HOME → 1. Nhập 1/2 + 1/3 bằng phím phân số.
+   Dùng mũi tên phải để ra khỏi mỗi phân số. EXE cho 5/6.
+   FORMAT đổi qua thập phân; FORMAT lần nữa trở lại phân số.
+2. Lũy thừa: AC → 2 → phím lũy thừa → 3 → EXE. Kết quả 8.
+3. Phương trình: HOME → 6 → Đa thức → bậc 2. Nhập hệ số 1, −5, 6.
+   Xác nhận mỗi hệ số bằng EXE, chạy giải và xem hai nghiệm 2 và 3.
+4. Bảng giá trị: HOME → 5 → TOOLS → Định nghĩa f(x). Nhập x² rồi EXE.
+   TOOLS → Phạm vi Bảng: bắt đầu 1, kết thúc 5, bước 1. Chọn Thực hiện.
+   Dãy f(x) là 1, 4, 9, 16, 25.
+5. Tỉ lệ thức: HOME → dấu trừ → dạng A:B=X:D. Nhập 3, 8, 12.
+   Chạy giải để nhận X=9/2. Có thể dùng FORMAT đổi kiểu đáp số.
+6. Số phức: HOME → 8. Nhập 1 + i bằng SHIFT → 9, rồi EXE.
+   Kết quả 1+i. Chuyển ứng dụng bằng HOME khi cần.
+
+CÁC NHÓM KHÁC
+HOME có đủ 14 ứng dụng. Bayes, xác suất, thống kê ghép nhóm và hình học nằm
+trong Khám phá Toán; Đường thẳng số và Đường tròn nằm trong Hộp Toán học.
+Nhật ký phím giúp xem lại thao tác; dùng Sao chép hoặc Tải JSON nếu cần góp ý.
+
+PHẠM VI
+Đây là bản demo để thử các luồng tính chính. Một số biểu thức lồng rất sâu,
+ca SOLVE khó, chữ số sâu và chuỗi ngẫu nhiên còn đang đối chiếu.
+Chi tiết: PHAM-VI-BAN-THU.md. Khi báo lỗi, gửi mã bản cùng chuỗi phím tái hiện.

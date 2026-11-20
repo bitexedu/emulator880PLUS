@@ -1,0 +1,76 @@
+{
+  "model": "fx-880BTG PLUS",
+  "angle": "deg",
+  "language": "vi",
+  "source": "ClassPad.net Math — exact fx-880BTG PLUS, observed 2026-11-19 through visible keys and LCD SVG; saved directly to project.",
+  "frames": {
+    "complex-limit-valid-input": "NEMDQz8/OEEDQQFBA0E/PzdBA0EBQQNBPz83QQNBAUEDQT8/CUMTQwZGBEMDRAJECEM/PEQFQQZBBUQFSAxBBUEIQz87RQRDBEMDRQVCBEIMQQVBPz8HQgFCBUMCQwRCAUIFQgRCCEEDQQFBA0EGRD8/QgZGCEIFQgRCCUMDQwdEPz9CB0QJQgVCBEIaQz8/QgdECUIFQgRCGUQ/P0IGRghCBUIEQhlDPz8BQgVDAkMHQgVCBEIYRD8/AUIEQwRDBkIFQgRCGEMCQj89QgVBBkEHQgVIGEc/PUIUQgZGGkU/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/PyRDHUQFRAlDPz8IRBxGA0YIQz8/B0UURQNCAkIDQgJCPz8SQgFCFEUERQRFBkQ/PwtCIEIHQgZEPz8LQgZBBEERRQRFB0M/PwtCBkICQgNCAkMHRAVEB0Q/PwtCB0QEQgFFGkM/PwxCCEIFQgFCAUIZRD8/DEIHRARCAUIBQhlDAkI/PwlCBkICQgNCAUUZRz8/CUIGQQRBA0ICQxtFPz8/Pz8/CA==",
+    "complex-limit-valid-rescaled": "PxtDA0M/PzhBA0EBQQNBPz83QQNBAUEDQT8/N0EDQQFBA0E/IkMpQxNDBkYERAJEPyJDG0EGQQVEBUEGQQVEBUgGQQVBPyFFGUMEQwNFBEMEQwNFBUIEQgZBBUE/IUIBQgRCAUQFRgRDAkMEQgFCBUMCQwRCAUIFQgRCAkEDQQFBA0E/IEMBQwNIA0gERghCBkYIQgVCBEIDQwNDPyFCA0IDQwNCA0IEQgVECUIHRAlCBUIEQj8tQgNCA0IEQgNFCEQJQgdECUIFQgRCPyxJAkIEQgRGBUYIQgZGCEIFQgRCPyxJAkIEQgdEA0MCQwdCBUMCQwdCBUIEQj8sQgVCAkIEQgNCBEICQwRDBkIEQwRDBkIFQgRCPyxCBUICQgRCA0gDQQZBB0IFQQZBB0IFSD8sQgVCAkIEQgRGE0IUQgZGPz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/DkM/Pz9DPz8/Pz8/AUQ/Pz5EPz8/Qz8/PkQ/Pz5DPz8+RD8/PkMCQj8/O0c/PzxFPz8/Pz8/CA=="
+  },
+  "keys": {
+    "complex-limit-valid-input": [
+      "home",
+      "1",
+      "settings",
+      "3",
+      "3",
+      "1",
+      "1",
+      "home",
+      "8",
+      "1",
+      "times-ten",
+      "shift",
+      "subtract",
+      "9",
+      "9",
+      "right",
+      "shift",
+      "9",
+      "exe"
+    ],
+    "complex-limit-valid-rescaled": [
+      "home",
+      "1",
+      "settings",
+      "3",
+      "3",
+      "1",
+      "1",
+      "home",
+      "8",
+      "1",
+      "times-ten",
+      "shift",
+      "subtract",
+      "9",
+      "9",
+      "right",
+      "shift",
+      "9",
+      "exe",
+      "ac",
+      "ans",
+      "multiply",
+      "1",
+      "times-ten",
+      "9",
+      "9",
+      "exe"
+    ]
+  },
+  "statuses": {
+    "complex-limit-valid-input": [
+      "math",
+      "D",
+      "i",
+      "up"
+    ],
+    "complex-limit-valid-rescaled": [
+      "math",
+      "D",
+      "i",
+      "up"
+    ]
+  }
+}

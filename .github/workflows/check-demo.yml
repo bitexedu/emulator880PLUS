@@ -1,0 +1,30 @@
+name: Kiểm tra demo PLUS
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Kiểm tra và đóng gói demo
+        run: python3 tools/build-preview.py
+      - name: Lưu gói demo và kết quả kiểm tra
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fx-880btg-plus-demo
+          path: releases/
+          if-no-files-found: error
+          retention-days: 14

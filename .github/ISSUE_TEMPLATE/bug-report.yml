@@ -1,0 +1,44 @@
+name: Báo lỗi demo PLUS
+description: Gửi lỗi để team BITEX có thể tái hiện và đối chiếu.
+title: "[PLUS] "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Phiên bản trong Nhật ký phím
+      placeholder: 0.7.0-demo.2
+    validations:
+      required: true
+  - type: input
+    id: feature
+    attributes:
+      label: Ứng dụng hoặc nhóm tính năng
+      placeholder: Tính thường / Ma trận / Bayes / hiển thị LCD…
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Trạng thái ban đầu và chuỗi phím
+      description: Ghi cả MathI/LineI, đơn vị góc, Fix/Sci/Norm và ngôn ngữ nếu liên quan.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Kết quả thực tế và kết quả mong đợi
+      description: Ghi rõ nguồn kỳ vọng từ máy vật lý, đúng mẫu PLUS trên ClassPad hoặc tài liệu.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Trình duyệt, thiết bị và mức thu phóng
+      placeholder: Chrome, Windows 11, laptop, 100%
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Ảnh, video hoặc JSON Nhật ký phím
+      description: Kéo thả tệp vào đây. Tránh đưa thông tin cá nhân vào bài thử.

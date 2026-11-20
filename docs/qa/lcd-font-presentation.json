@@ -1,0 +1,35 @@
+{
+  "version": "0.7.0-demo.2",
+  "url": "https://fx-880btg-plus-demo.dtran1904.chatgpt.site/",
+  "reference": "Direct visible fx-880BTG PLUS ClassPad SVG,2026-11-20",
+  "cause": "Fractional pixelated canvas scaling",
+  "old_css_size": [
+    250.9375,
+    98.015625
+  ],
+  "native_size": [
+    192,
+    75
+  ],
+  "observed_dpr": 1,
+  "presentation": "Shared SVG,geometricPrecision,three unchanged ink tones",
+  "native_fixture_cases": 6635,
+  "tests": 6689,
+  "new_presentation_tests": 5,
+  "round_trip_native_frames": 26,
+  "status_vectors_preserved": 13,
+  "mobile_viewports": [
+    [
+      320,
+      568
+    ],
+    [
+      390,
+      844
+    ]
+  ],
+  "cursor_blink_ms": 1200,
+  "site_commit": "da48b9b37081f15143b74a98db9677374e672f25",
+  "before": "lcd-font-before.jpg",
+  "after": "lcd-font-after.jpg"
+}
