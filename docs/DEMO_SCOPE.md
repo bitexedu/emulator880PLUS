@@ -1,4 +1,4 @@
-# Phạm vi demo fx-880BTG PLUS — 0.7.0-demo.2
+# Phạm vi demo fx-880BTG PLUS — 0.7.0-demo.3
 
 Bản demo ngày 20/11/2026, kế thừa nền tính toán beta.104. Chữ CASIO được bỏ khỏi mặt máy theo yêu cầu; tên mẫu fx-880BTG PLUS, các phím, nhãn phím và LCD được giữ theo mẫu PLUS. Bốn màu lấy từ ảnh TIFF gốc. LCD dùng bộ điểm ảnh đã đối chiếu trên ClassPad, gồm chữ tiếng Việt, số và ký hiệu; gói có sẵn toàn bộ tài nguyên.
 
@@ -10,7 +10,7 @@ Thư mục **web/** là bản dùng cho website. Bản chạy qua máy chủ c�
 
 ## Hiển thị LCD
 
-Demo.2 dựng chữ,ba sắc độ điểm ảnh,chỉ báo và con trỏ trên cùng một SVG192×75. Giữ nguyên glyph và vị trí của mẫu PLUS;loại bỏ phóng canvas kiểu pixelated gây nét1/2 hoặc2/3 điểm màn hình không đều khi co giãn. Kiểm thêm5 ca bảo toàn toàn bộ điểm ảnh,con trỏ và ký hiệu chỉ báo.
+LCD dựng chữ, ba sắc độ điểm ảnh, chỉ báo và con trỏ trên cùng một SVG192×75. Giữ nguyên glyph và vị trí của mẫu PLUS; loại bỏ phóng canvas kiểu pixelated gây nét không đều khi co giãn. Demo.3 bổ sung HOME khi ẩn số lựa chọn cho cả 14 ứng dụng, tiếng Việt và tiếng Anh; bổ sung nhãn/tiêu đề cài đặt còn dùng font dự phòng. Phím số vẫn chọn được khi nhãn số bị ẩn, và BACK trong Cài đặt giữ đúng mục vừa chọn theo PLUS.
 
 ## Chức năng chính
 
@@ -28,7 +28,7 @@ Demo.2 dựng chữ,ba sắc độ điểm ảnh,chỉ báo và con trỏ trên 
 
 ## Mức kiểm và giới hạn
 
-Bộ kiểm hiện có **6.689 ca đạt**, gồm **6.635 màn LCD** qua thao tác phím với kỳ vọng quan sát từ đúng fx-880BTG PLUS trên ClassPad. Số ca kiểm không phải tỷ lệ hoàn thành toàn bộ máy.
+Bộ kiểm hiện có **6.743 ca đạt**, gồm **6.689 màn LCD** qua thao tác phím với kỳ vọng quan sát từ đúng fx-880BTG PLUS trên ClassPad. Trong đó có 54 quan sát mới về HOME và Cài đặt. Số ca kiểm không phải tỷ lệ hoàn thành toàn bộ máy.
 
 Các ca còn chờ gồm một số mũ lồng sâu và con trỏ sau lỗi, chữ số sâu của log/SOLVE, hệ gần suy biến, vài nhánh nhập Phân phối, giới hạn tổng/tích rất dài và chuỗi ngẫu nhiên Cùng Kết quả. QR chưa triển khai. Cần lượt nghiệm thu riêng trên máy tính vật lý và thiết bị cảm ứng thật. Các ca chưa khớp không được tính là đã đối chiếu đạt.
 

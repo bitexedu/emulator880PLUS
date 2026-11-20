@@ -90,8 +90,8 @@ function createCalculator880(savedSettings = {}) {
   applySettings();
 
   function open(rows, {columns = 1, capacity = 4, direct = true, highlight = true, initial = 0, quick = false, wrap = false,
-    size = null, title = null, relations = false, circleTypes = false, trialForm = null, trialViews = false, variables = null, symbols = false, constants = false, conversions = false, confirmation = null, mathBoxRoot = false, explorerRoot = false, resetKind = null, sheetPreference = false} = {}) {
-    if (rows.length) menus.push({rows, columns, capacity, direct, highlight, quick, wrap, size, title, relations, circleTypes, trialForm, trialViews, variables, symbols, constants, conversions, confirmation, mathBoxRoot, explorerRoot, resetKind, sheetPreference, selected: initial,
+    size = null, title = null, relations = false, circleTypes = false, trialForm = null, trialViews = false, variables = null, symbols = false, constants = false, conversions = false, confirmation = null, mathBoxRoot = false, explorerRoot = false, resetKind = null, sheetPreference = false, settingsContext = !!top()?.settingsContext} = {}) {
+    if (rows.length) menus.push({rows, columns, capacity, direct, highlight, quick, wrap, size, title, relations, circleTypes, trialForm, trialViews, variables, symbols, constants, conversions, confirmation, mathBoxRoot, explorerRoot, resetKind, sheetPreference, settingsContext, selected: initial,
       offset: Math.max(0, initial - capacity + 1)});
   }
 
@@ -178,7 +178,8 @@ function createCalculator880(savedSettings = {}) {
       action(label('Sáng/tối Mhình', 'Contrast'), () => showNotice(label('Tương phản', 'Contrast'), '◀  ▪  ▶', 'contrast'), {arrow:true}),
       branch(label('Tự động tắt', 'Auto Power Off'), () => choices('autoOff', [[10, '10 Min.'], [60, '60 Min.']])),
       branch(label('Ngôn ngữ', 'Language'), () => choices('language', [['en', 'English'], ['vi', 'Tiếng Việt']]), {wrap:true}),
-      branch(label('H.thị số t.chọn', 'Show Option Num'), () => choices('hints', onOff())),
+      branch(label('H.thị số t.chọn', 'Show Option Num'), () => choices('hints', onOff()),
+        {title:label('H.thị số t.chọn?', 'Show Option Num?')}),
       branch('QR Code', () => choices('qr', [[3, 'Version 3'], [11, 'Version 11']]))
     ];
   }
@@ -1162,7 +1163,7 @@ function createCalculator880(savedSettings = {}) {
       if (exit || enter) t.grab = null;
       else moveSheetSelection(key, grab);
     } else if (key === 'catalog') shift ? quickCatalog() : openCatalog();
-    else if (key === 'settings') open(settingsRoot(), {wrap:true});
+    else if (key === 'settings') open(settingsRoot(), {wrap:true, settingsContext:true});
     else if (key === 'tools' && !draft) openSheetTools();
     else if (exit) {
       engine.clear();
@@ -1925,7 +1926,7 @@ function createCalculator880(savedSettings = {}) {
         const fromContrast = notice.kind === 'contrast';
         notice = null;
         if (fromContrast && key === 'back') {
-          open(settingsRoot(), {wrap:true});
+          open(settingsRoot(), {wrap:true, settingsContext:true});
           open(systemSettings());
         } else if (['math-box','math-explorer'].includes(app) && !mathBox && !explorer) home = true;
       }
@@ -2018,7 +2019,7 @@ function createCalculator880(savedSettings = {}) {
 
       if (key === 'right' && activeMenu.geometryMemoryMenu) return;
       if (key === 'left' && activeMenu.geometryMemoryMenu) { menus = []; return; }
-      if (key === 'settings' && activeMenu.mathBoxRoot) { open(settingsRoot(), {wrap:true}); return; }
+      if (key === 'settings' && activeMenu.mathBoxRoot) { open(settingsRoot(), {wrap:true, settingsContext:true}); return; }
       if (key === 'settings' && activeMenu.sheetPreference) return;
       if (key === 'ac' || key === 'settings') {
         const restoreMathBox = menus.some(menu => menu.mathBoxRoot);
@@ -2033,14 +2034,18 @@ function createCalculator880(savedSettings = {}) {
         if (activeMenu.statisticsRunMenu) engine.statisticsCommand('data');
         return;
       }
-      const localShortcut = activeMenu.direct && settings.hints ? shortcutIndex(key,activeMenu.constants) : -1;
+      const localShortcut = activeMenu.direct ? shortcutIndex(key,activeMenu.constants) : -1;
       const shortcut = localShortcut >= 0 && activeMenu.quick ? activeMenu.offset + localShortcut : localShortcut;
       if (['ok','exe'].includes(key) || (key === 'right' && activeMenu.columns === 1 && activeMenu.rows[activeMenu.selected].arrow) || (shortcut >= 0 && shortcut < activeMenu.rows.length)) {
         const choice = activeMenu.rows[shortcut >= 0 ? shortcut : activeMenu.selected];
         if (choice) {
-          if ((choice.radio || activeMenu.sheetTools) && shortcut >= 0) {
+          if ((choice.radio || activeMenu.sheetTools || activeMenu.settingsContext) && shortcut >= 0) {
             activeMenu.selected = shortcut;
             if (activeMenu.sheetTools) activeMenu.offset = Math.max(0,shortcut-activeMenu.capacity+1);
+            if (activeMenu.settingsContext) {
+              if (shortcut < activeMenu.offset) activeMenu.offset = shortcut;
+              if (shortcut >= activeMenu.offset + activeMenu.capacity) activeMenu.offset = shortcut - activeMenu.capacity + 1;
+            }
           }
           choice.choose();
           if (sheet && !sheet.fill && engine.getState().nodes?.length) sheet.draft = true;
@@ -2050,7 +2055,7 @@ function createCalculator880(savedSettings = {}) {
     }
     if (home) {
       if (key === 'settings') { showNotice('Get Started', label('Hướng dẫn qua mã QR', 'QR code guide')); return; }
-      const index = settings.hints ? HOME_APPS.findIndex(entry => entry.key === key) : -1;
+      const index = HOME_APPS.findIndex(entry => entry.key === key);
       if (index >= 0 || key === 'ok' || key === 'exe') launch(index >= 0 ? index : homeIndex);
       else if (pageKeys.includes(key)) {
         homeOffset = Math.max(0, Math.min(9, homeOffset + (key === 'page-up' ? -6 : 6)));
@@ -2069,7 +2074,7 @@ function createCalculator880(savedSettings = {}) {
       if (engine.getState().mode === 'calc' && engine.getState().operation === 'calc') return;
       if (app === 'statistics' && ['stats','regression'].includes(engine.getState().screen)) return;
       if (['calculate','complex'].includes(app) && engine.getState().mode === 'result') settingsResult ||= engine.getState();
-      open(settingsRoot(), {wrap:true});
+      open(settingsRoot(), {wrap:true, settingsContext:true});
     }
     else if (key === 'catalog') shift ? quickCatalog() : openCatalog();
     else if (key === 'tools') {

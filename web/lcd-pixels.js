@@ -73,8 +73,8 @@ function lcdLocaleAssets880(assets,language) {
 }
 
 function lcdHome880(state, surface) {
-  const tiles = CLASS_PAD_LCD.home[state.settings.language];
-  if (!state.settings.hints || !tiles) return null;
+  const tiles = (state.settings.hints ? CLASS_PAD_LCD.home : CLASS_PAD_LCD.homeNoNumbers)[state.settings.language];
+  if (!tiles) return null;
   const count = Math.min(6, HOME_APPS.length - state.homeOffset);
   for (let slot = 0; slot < count; slot++) {
     const entry = state.homeOffset + slot;
@@ -226,14 +226,17 @@ function lcdMenu880(state, surface) {
   if ((!english && settings.language !== 'vi') || (!pairedMenu && (menu.columns !== 1 || menu.capacity !== 4))) return null;
   const rows = menu.rows.slice(menu.offset, menu.offset + menu.capacity);
   const nameOf = row => row.name.normalize('NFC');
+  const optionAssets = CLASS_PAD_LCD.optionNumbers[settings.language];
   const labels = menu.relations ? CLASS_PAD_LCD.complex.verifySigns : english
-    ? {...CLASS_PAD_LCD.labels,...CLASS_PAD_LCD.equations.englishMenu} : CLASS_PAD_LCD.labels;
+    ? {...CLASS_PAD_LCD.labels,...CLASS_PAD_LCD.equations.englishMenu,...optionAssets.labels}
+    : settings.hints ? CLASS_PAD_LCD.labels : {...CLASS_PAD_LCD.labels,...optionAssets.labels};
   if (!rows.every(row => row.numberFormat || labels[nameOf(row)] || [...nameOf(row)].every(char => CLASS_PAD_LCD.glyphs[char]))) return null;
 
   if (menu.title && state.app === 'spreadsheet') surface.sprite(lcdLocaleAssets880(CLASS_PAD_LCD.sheet,settings.language).autoTitle, 0, 0);
   if (menu.title && state.app === 'statistics') surface.sprite(lcdLocaleAssets880(CLASS_PAD_LCD.special.regression,settings.language).frequencyTitle, 0, 0);
   if (menu.title && state.app === 'math-box') surface.sprite(lcdLocaleAssets880(CLASS_PAD_LCD.trials,settings.language).viewTitle,0,0);
   if (menu.title && CLASS_PAD_LCD.numberMenus.titles[menu.title]) surface.sprite(CLASS_PAD_LCD.numberMenus.titles[menu.title],0,0);
+  if (menu.title === 'Show Option Num?' || menu.title === 'H.thị số t.chọn?') surface.sprite(optionAssets.title,0,0);
   rows.forEach((row, index) => {
     const y = (Math.floor(index / menu.columns) + Number(!!menu.title)) * 16;
     const start = pairedMenu ? index % 2 * 99 : 0;
