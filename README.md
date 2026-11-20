@@ -1,8 +1,10 @@
 # fx-880BTG PLUS — demo cho team BITEX
 
-**Phiên bản: 0.7.0-demo.2 · 20/11/2026**
+**Phiên bản nguồn thử: 0.7.0-demo.3 · 20/11/2026**
 
 **[Mở demo ngay](https://fx-880btg-plus-demo.dtran1904.chatgpt.site/)** — không cần đăng nhập. Nếu đang mở bản cũ, tải lại trang và kiểm tra phiên bản trong **Nhật ký phím**.
+
+Link công khai hiện giữ bản ổn định demo.2. Nhánh này là ứng viên demo.3: sửa HOME khi tắt số lựa chọn, nhãn/tiêu đề Cài đặt và cách dùng phím số ẩn. Chạy nguồn trên máy hoặc tải gói từ kết quả Actions của nhánh để kiểm bản mới.
 
 Bản demo có 14 ứng dụng chính, gồm Tính thường, Phương trình, Thống kê, Phân phối, Bảng tính, Ma trận, Vectơ, Khám phá Toán và Hộp Toán học. LCD đã chuyển sang SVG để giữ nét đồng đều khi đổi kích thước; dữ liệu chữ, số, dấu tiếng Việt, ký hiệu và con trỏ giữ theo mẫu PLUS đã quan sát trên ClassPad. Dòng CASIO đã được bỏ khỏi mặt máy theo yêu cầu của dự án.
 
@@ -20,7 +22,7 @@ node serve.js
 
 Mở http://127.0.0.1:8870/ . Kiểm tra bằng `node --test test/*.test.js`. Đóng gói bằng `python3 tools/build-preview.py`; gói tạo ra trong `releases/`.
 
-Bộ kiểm hiện có **6.689 ca đạt**, gồm **6.635 màn LCD** qua thao tác phím với kỳ vọng quan sát từ đúng mẫu PLUS trên ClassPad. Đây là số bằng chứng kiểm, không phải tỷ lệ giống toàn bộ máy. Xem [phạm vi và ca còn chờ](docs/DEMO_SCOPE.md).
+Bộ kiểm hiện có **6.743 ca đạt**, gồm **6.689 màn LCD** qua thao tác phím với kỳ vọng quan sát từ đúng mẫu PLUS trên ClassPad. Trong đó có 54 màn mới về HOME và Cài đặt. Đây là số bằng chứng kiểm, không phải tỷ lệ giống toàn bộ máy. Xem [phạm vi và ca còn chờ](docs/DEMO_SCOPE.md) và [bằng chứng nhóm mới](docs/qa/lcd-880-home-option-review.md).
 
 Bản công khai dùng trực tuyến; khả năng lưu ngoại tuyến trên hosting này còn cần kiểm riêng. Ảnh TIFF gốc, PDF, Word và hồ sơ bàn giao đầy đủ được giữ trong hồ sơ dự án, không nằm trong bản chụp nguồn này. Tài nguyên web, font và mẫu kiểm cần để chạy đã có sẵn.
 

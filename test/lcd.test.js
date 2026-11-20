@@ -6,6 +6,7 @@ const {readFileSync} = require('node:fs');
 const {join} = require('node:path');
 const {runInNewContext} = require('node:vm');
 const references = require('./fixtures/classpad-880-lcd.json');
+const homeOptionLCD = require('./fixtures/classpad-880-home-option-numbers-lcd.json');
 const special = require('./fixtures/classpad-880-special-lcd.json');
 const arrays = require('./fixtures/classpad-880-matrix-vector-lcd.json');
 const baseDistribution = require('./fixtures/classpad-880-base-distribution-lcd.json');
@@ -226,7 +227,7 @@ const patterns = {
 
 function decodeReference(name) {
   const pixels = [];
-  for (const byte of Buffer.from(references[name] || special.frames[name] || arrays.frames[name] ||
+  for (const byte of Buffer.from(references[name] || homeOptionLCD.frames[name] || special.frames[name] || arrays.frames[name] ||
     baseDistribution.frames[name] || equations.frames[name] || equationFollowup.frames[name] ||
     solveCubicLCD.frames[name] || solveCubicMemoryLCD.frames[name] || solveCubicNewtonLCD.frames[name] ||
     solveCubicStencilLCD.frames[name] || sheetLCD.frames[name] || ratioLCD.frames[name] ||
@@ -895,6 +896,13 @@ for (const [index, char] of [...'≠><≥≤'].entries()) {
     assert.ok(frame);
     const actual = Array.from({length:12}, (_, row) => Array.from(frame.pixels.slice(row * 192 + 11, row * 192 + 22))).flat();
     assert.deepEqual(actual, expected);
+  });
+}
+
+for (const [name, keys] of Object.entries(homeOptionLCD.keys)) {
+  test('LCD ' + name, () => {
+    const state = checkFrame(name, keys, homeOptionLCD.initialSettings);
+    assert.deepEqual(Array.from(lcdStatusFlags880(state)), homeOptionLCD.statuses[name]);
   });
 }
 
