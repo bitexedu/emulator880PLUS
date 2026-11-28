@@ -1,13 +1,10 @@
-# Trạng thái bản demo công bố
+# Trạng thái bản nguồn cho team BITEX
 
-Ngày 20/11/2026 · `0.7.0-demo.2`.
+28/11/2026 · **0.7.0-demo.19**.
 
-- Nền tính toán kế thừa beta.104; demo.2 sửa cách trình bày LCD bằng SVG, giữ dữ liệu glyph và thao tác máy.
-- Bộ kiểm nguồn: 6.689 ca, gồm 6.635 màn LCD qua phím với kỳ vọng đã quan sát từ đúng fx-880BTG PLUS trên ClassPad. Chưa quy đổi thành phần trăm giống toàn máy.
-- Bản đã chạy: https://fx-880btg-plus-demo.dtran1904.chatgpt.site/ . Cần tải lại tab cũ để nạp demo.2.
-- [Phạm vi và giới hạn](DEMO_SCOPE.md) · [Hướng dẫn kiểm tra](TEAM_TESTING.md).
-- Bằng chứng sửa nét LCD: `docs/qa/lcd-font-after.jpg` và `docs/qa/lcd-font-presentation.md`.
-
-Đây là trạng thái rút gọn của bản chụp nguồn dành cho team. Nhật ký đầy đủ, tài liệu bàn giao và TIFF/PDF/Word gốc vẫn nằm trong hồ sơ dự án gốc. Các công cụ dựng lại ảnh/font cần hồ sơ nguồn tương ứng; chạy demo và bộ kiểm không cần những tài liệu đó.
-
-Các mục còn chờ gồm mũ lồng sâu/con trỏ sau lỗi, chữ số sâu log/SOLVE, hệ gần suy biến, vài nhánh Phân phối, tổng/tích rất dài, chuỗi ngẫu nhiên Cùng Kết quả và QR. Cần nghiệm thu thêm trên máy vật lý và thiết bị cảm ứng thật.
+- Bản nguồn cập nhật từ demo.2 lên demo.19, gồm các sửa lỗi BITEX, mobile/PWA, ngoại tuyến, nhật ký phím gốc và Sao chép Word.
+- Cổng trao đổi dữ liệu mới theo patch chủ dự án cung cấp; chỉ đọc trạng thái và tô sáng để người dùng tự bấm. Origin mặc định trống; không bật truy cập website bên ngoài hoặc nới header chống iframe.
+- Bộ kiểm: **7.265/7.265 đạt**, không bỏ qua. Trong đó7.155ca LCD đã có bằng chứng PLUS,14kiểm bridge và6kiểm adapter hosting riêng. Kiểm cổng không được tính là quan sát LCD mới.
+- Kiểm cổng cục bộ: hello, xuất2³=8, xuấtMath ERROR và hướng dẫn bốn phím đạt. Chưa nghiệm thu ứng dụng bên nhận hoặc nhúng trên hosting thật. Một thông báo MutationObserver ban đầu không có nguồn/stack không tái hiện sau tải lại có thu lỗi.
+- Netlify đích: https://fx880btgplus.netlify.app/ . Hồ sơ phát hành ghi ở `docs/RELEASE_DEMO19.md` sau khi hoàn tất.
+- Phạm vi và giới hạn: [DEMO_SCOPE.md](DEMO_SCOPE.md). Hồ sơ gốc, TIFF/PDF/Word/keymap TTF không được mang vào kho này.

@@ -10,6 +10,18 @@ SOURCE = ROOT / 'test/fixtures/classpad-880-lcd.json'
 WIDTH = 192
 HEIGHT = 63
 SOURCE_FRAMES = json.loads(SOURCE.read_text())
+HOME_OPTIONS = json.loads((SOURCE.parent / 'classpad-880-home-option-numbers-lcd.json').read_text())
+SOURCE_FRAMES.update(HOME_OPTIONS['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-bitex-report-20261125-lan2-bug007-lcd.json').read_text())['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-bitex-report-20261125-lan2-bug006-lcd.json').read_text())['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-bitex-report-20261125-lan2-bug005-lcd.json').read_text())['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-bitex-report-20261125-lan2-bug004-lcd.json').read_text())['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-bitex-report-20261125-lan2-bug003-lcd.json').read_text())['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-bitex-report-20261124-bug003-lcd.json').read_text())['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-scientific-notation-lcd.json').read_text())['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-science-key-controls-lcd.json').read_text())['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-verify-memory-exact-lcd.json').read_text())['frames'])
+SOURCE_FRAMES.update(json.loads((SOURCE.parent / 'classpad-880-complex-verify-exact-lcd.json').read_text())['frames'])
 SPECIAL = json.loads((SOURCE.parent / 'classpad-880-special-lcd.json').read_text())
 SOURCE_FRAMES.update(SPECIAL['frames'])
 ARRAYS = json.loads((SOURCE.parent / 'classpad-880-matrix-vector-lcd.json').read_text())
@@ -219,6 +231,7 @@ def build_math():
     script['÷'] = crop('calculus-derivative-sine-point',138,19,6,9)
     script['x'] = crop('function-calculus-integral-definition',66,2,6,9,lambda p:int(p != 0))
     script['.'] = crop('discrete-calculus-math-sum-fraction-lower-input',18,24,6,9,lambda p:int(p != 0))
+    normal['#'] = crop('lan2-bug007-ran-input',33,0,11,12)
     return normal, script
 
 
@@ -273,6 +286,23 @@ def build_home(language):
                   else prefix + str(13 if offset == 9 else first_refs[offset])), x, y, 60, 31),
         ])
     return home
+
+
+def build_home_without_numbers(language):
+    # These observations move right through HOME; the visible window advances
+    # one row at a time. Each tile has an independent selected/normal sample.
+    def offset(index):
+        return max(0, min(9, index // 3 * 3 - 3))
+
+    def tile(entry, selected):
+        slot = entry - offset(selected)
+        return crop(f'home-option-{language}-off-focus-{selected}',
+                    slot % 3 * 64, slot // 3 * 32, 60, 31)
+
+    return [[tile(entry, entry), tile(entry, next(
+        selected for selected in range(14)
+        if selected != entry and offset(selected) <= entry < offset(selected) + 6))]
+            for entry in range(14)]
 
 
 def build_menu():
@@ -529,6 +559,9 @@ def build_menu():
         aliases[label] = crop('stat-two-calc-catalog-regression', x, i // 2 * 16, 78, 15,
                               lambda p: int(p == 0) if i == 0 else int(p != 0))
     other_labels = ('Ans','π','e','√(','ˣ√(','⁻¹','²','^(','−',',','(',')')
+    # Native Calculate menu, unselected option 2; other editors omit PreAns.
+    aliases['PreAns'] = crop('calculate-other-first',110,0,78,15)
+    hints['×'] = [None,crop('calculate-other-last-row',0,48,11,15)]
     for sample,first,last in (('en-catalog-other',0,8),('en-catalog-other-last',4,12)):
         for index in range(first,last):
             slot = index-first
@@ -1290,6 +1323,11 @@ def build_base_distribution():
 def build():
     normal, script = build_math()
     labels, hints, glyphs, chrome = build_menu()
+    # Keep the previously accepted native sprites reproducible when the atlas
+    # is regenerated; these were already present in the published demo.2.
+    labels['English'] = crop('home-option-en-language-off', 11, 0, 77, 15, lambda p: int(p == 0))
+    labels['Tiếng Việt'] = crop('home-option-en-language-off', 11, 16, 110, 15)
+    labels['Verify'] = crop('complex-verify-catalog-open', 11, 0, 165, 15, lambda p: int(p == 0))
     long = frame('long')
     symbols = {
         'combinatoric':{char:crop(sample,11,0,11,12) for char,sample in
@@ -1325,6 +1363,7 @@ def build():
         'openTall': crop('nested', 2, 0, 11, 20, lambda p: int(bool(p))),
         'closeTall': crop('nested', 66, 0, 13, 20, lambda p: int(bool(p))),
         'scientificBase': crop('scientific', 150, 49, 22, 12),
+        'scientificInputBase': crop('sci-recheck-square-inside-result',22,4,22,12),
         'smallNegative': crop('exp-negative', 44, 0, 6, 9),
         'scientificNegativeBase': crop('exp-negative', 150, 49, 22, 12),
         'openFraction': crop('tallParen', 0, 0, 11, 29),
@@ -1364,6 +1403,7 @@ def build():
     for char,x in {'l':11,'g':23}.items():
         script[char] = crop('math-script-log-palette',x,0,6,9)
     script['h'] = crop('math-script-hyperbolic',29,0,6,9)
+    script['%'] = crop('science-key-percent-inside-result',50,0,6,9)
     script['𝑖'] = crop('math-script-imaginary-input',11,0,6,9)
     quick_captures = ['catalog-quick-0','catalog-quick-last','catalog-quick-third','catalog-quick-4','catalog-quick-5']
     quick = [crop(name, col * 63, row * 12, 63, 12)
@@ -1372,6 +1412,18 @@ def build():
     verify_quick = ['verify-quick'] + [f'verify-quick-page-{i}' for i in range(1, 5)]
     result = {'normal': normal, 'script': script, 'scientific': scientific, 'quick': quick,
               'home': {language: build_home(language) for language in ('vi', 'en')},
+              'homeNoNumbers': {language: build_home_without_numbers(language) for language in ('vi', 'en')},
+              'optionNumbers': {
+                  'en': {
+                      'title': crop('home-option-en-choice-on', 0, 0, 188, 15),
+                      'labels': {label: crop('home-option-en-system-off', 0, row * 16, 176, 15,
+                                            (lambda p: int(p == 0)) if row == 0 else (lambda p: int(p != 0)))
+                                 for row, label in enumerate(['Contrast', 'Auto Power Off', 'Language', 'Show Option Num'])}},
+                  'vi': {
+                      'title': crop('home-option-vi-choice-off', 0, 0, 188, 15),
+                      'labels': {label: crop('home-option-vi-root-off', 0, row * 16, 176, 15,
+                                            (lambda p: int(p == 0)) if row == 0 else (lambda p: int(p != 0)))
+                                 for row, label in enumerate(['Cài đặt phép tính', 'Cài đặt Hệ thống'])}}},
               'labels': labels, 'hints': hints, 'glyphs': glyphs, 'menu': chrome, 'symbols': symbols,
               'status': build_status(), 'special': build_special(), 'arrays': build_arrays(),
               'numberLine': build_number_line(), 'circle': build_circle(), 'geometry': build_geometry(),
@@ -1479,6 +1531,73 @@ def build():
         'paste':crop('en-sheet-copy-paste',0,48,192,15),
         'grab':crop('en-sheet-grab',0,48,192,15),
     }
+    result['memory']['font']['+'] = crop('verify-memory-complex-variable-grid', 30, 1, 6, 9, lambda p:int(p == 0))
+    result['memory']['font']['i'] = crop('verify-memory-complex-variable-grid', 54, 1, 6, 9, lambda p:int(p == 0))
+    # Solver uses a distinct abbreviated Vietnamese label on FY523.
+    labels['Phươg trình'] = crop('lan2-bug003-catalog',11,0,165,15,lambda p:int(p == 0))
+    labels['Equation'] = crop('lan2-bug003-english-catalog',11,0,165,15,lambda p:int(p == 0))
+    # Equation Verify menus/fields are cropped from the exact PLUS, not fonts.
+    for name,sample,row,selected,left in [
+        ('Nghiệm Phức','lan2-bug004-poly-tools',0,True,11),
+        ('Mở','lan2-bug004-complex-roots',1,True,22),
+        ('Tắt','lan2-bug004-complex-roots',2,False,22),
+        ('Nhập Nghiệm','lan2-bug004-simul-verify-solution',0,True,11),
+        ('Vô nghiệm','lan2-bug004-simul-verify-solution',1,False,11),
+        ('Vô số nghiệm','lan2-bug004-simul-verify-solution',2,False,11),
+        ('1 Nghiệm','lan2-bug004-poly-verify-answers',0,True,11),
+        ('2 Nghiệm','lan2-bug004-poly-verify-answers',1,False,11)]:
+        labels.setdefault(name,crop(sample,left,row*16,176-left,15,
+            (lambda p:int(p == 0)) if selected else (lambda p:p)))
+    result['numberMenus']['titles']['Nghiệm Phức?']=crop('lan2-bug004-complex-roots',0,0,188,15)
+    result['equationVerify']={'vi':{
+        'fields':{
+            'x':crop('lan2-bug004-simul-answers',0,0,33,15,lambda p:int(p==0)),
+            'y':crop('lan2-bug004-simul-answers',0,16,33,15),
+            'x₁':crop('lan2-bug004-poly-two-answers',0,16,33,15,lambda p:int(p==0)),
+            'x₂':crop('lan2-bug004-poly-two-answers',0,32,33,15)},
+        'run':crop('lan2-bug004-simul-answer-values',0,32,188,15,lambda p:int(p==0)),
+        'runOff':crop('lan2-bug004-simul-answers',0,32,188,15),
+        'true':crop('lan2-bug004-simul-true',0,0,188,15),
+        'false':crop('lan2-bug004-poly-false',0,0,188,15),
+        'return':crop('lan2-bug004-simul-true',0,32,188,15,lambda p:int(p==0)),
+        'confirm':crop('lan2-bug004-simul-true',0,48,188,15),
+        'back':crop('lan2-bug004-poly-false',0,48,188,15,lambda p:int(p==0))}}
+    for names,sample in [(['Nghiệm','Lớn nhất','Nhỏ nhất'],'lan2-bug004-poly-verify-menu'),
+                         (['Roots','Maximum','Minimum'],'lan2-bug004-en-verify-menu'),
+                         (['Complex Roots','Verify ON'],'lan2-bug004-en-poly2-tools'),
+                         (['1 Solution','2 Solutions'],'lan2-bug004-en-count')]:
+        for row,name in enumerate(names):
+            labels.setdefault(name,crop(sample,11,row*16,165,15,
+                (lambda p:int(p==0)) if row==0 else (lambda p:p)))
+    for row,name in enumerate(['On','Off'],1):
+        labels.setdefault(name,crop('lan2-bug004-en-complex',22,row*16,154,15,
+            (lambda p:int(p==0)) if row==1 else (lambda p:p)))
+    result['numberMenus']['titles']['Complex Roots?']=crop('lan2-bug004-en-complex',0,0,188,15)
+    result['equationVerify']['header']=crop('lan2-bug004-poly-two-answers',0,0,192,15)
+    result['equationVerify']['en']={
+        'fields':result['equationVerify']['vi']['fields'],
+        'minimum':crop('lan2-bug004-en-minimum-form',0,0,192,15),
+        'maximum':crop('lan2-bug004-en-maximum-form',0,0,192,15),
+        'run':crop('lan2-bug004-en-complex-answers',0,48,188,15,lambda p:int(p==0)),
+        'runOff':crop('lan2-bug004-en-answers',0,48,188,15),
+        'true':crop('lan2-bug004-en-true',0,0,188,15),
+        'false':crop('lan2-bug004-en-false',0,0,188,15),
+        'return':crop('lan2-bug004-en-true',0,32,188,15,lambda p:int(p==0)),
+        'confirm':crop('lan2-bug004-en-true',0,48,188,15),
+        'back':crop('lan2-bug004-en-false',0,48,188,15,lambda p:int(p==0))}
+    result['equationVerify']['vi']['minimum']=crop('lan2-bug004-vi-minimum-form',0,0,192,15)
+    result['equationVerify']['vi']['maximum']=crop('lan2-bug004-vi-maximum-form',0,0,192,15)
+    result['contrast']={language:crop('lan2-bug005-'+language+'-default',0,0,192,63) for language in ('vi','en')}
+    for name,sample,row,selected in [
+        ('a+bi','lan2-bug006-complex-rect',0,True),('r∠θ','lan2-bug006-complex-rect',1,False),
+        ('×10ˣ (Mũ)','lan2-bug006-power',1,True),('×10ˣ (KH k.học)','lan2-bug006-power',2,False),
+        ('×10ˣ (Power)','lan2-bug006-en-power',1,True),('×10ˣ (Sci Notat)','lan2-bug006-en-power',2,False),
+        ('ₐᵦπ√ ↔ Thập phân','lan2-bug006-format-toggle',1,True),('Menu định dạng','lan2-bug006-format-toggle',2,False),
+        ('ₐᵦπ√ ↔ Decimal','lan2-bug006-en-format-toggle',1,True),('Format Menu','lan2-bug006-en-format-toggle',2,False)]:
+        labels[name]=crop(sample,22,row*16,166,15,(lambda p:int(p==0)) if selected else (lambda p:p))
+    for title,sample in [('Phím ×10ˣ','lan2-bug006-power'),('×10ˣ Key','lan2-bug006-en-power'),
+                         ('Phím FORMAT','lan2-bug006-format-toggle'),('FORMAT Key','lan2-bug006-en-format-toggle')]:
+        result['numberMenus']['titles'][title]=crop(sample,0,0,188,15)
     path = ROOT / 'web/assets/lcd-classpad-880.js'
     path.write_text("'use strict';\n// Generated by tools/build-lcd-atlas.py from observed ClassPad pixels.\n"
                     + 'const CLASS_PAD_LCD = ' + json.dumps(result, ensure_ascii=False, separators=(',', ':')) + ';\n')

@@ -7,7 +7,8 @@
     "19 direct native PLUS observations,2026-11-20,saved directly to project.13 accepted complete body/status samples;6 stateful/layout continuations remain referenceOnly with original keys/pixels/statuses.",
     "Fresh Initialize All controls confirm x² immediately after leaving MathI times10 is ignored:1×10^3 stays1000,2×10^3 stays2000,2×10^-3 stays1/500. Replay/DEL still enters and empties the scientific exponent.",
     "Only the clear native key rule is implemented,using the existing ignored-square rule after Sup for times10 too. LineI and580 keep their behavior.",
-    "Square entered while still inside a scientific exponent,nested power continuation,and Math ERROR Back caret need further study;the matching error panel is also held until its continuation matches. No masks or numeric calibration."
+    "Square entered while still inside a scientific exponent,nested power continuation,and Math ERROR Back caret need further study;the matching error panel is also held until its continuation matches. No masks or numeric calibration.",
+    "2026-11-23:all six held screens now pass unmodified frames/keys/statuses. Prior prose incorrectly read the result digits:exponent-square-result is2000000000, after-science-power-result is2000. Raw native pixels were always correct and have not been changed."
   ],
   "frames": {
     "science-postfix-overflow-input": "LYUCgzxDA0MBQz8ugQWBA4E6QQNBAUEDRD8ugQWBA4E6QQNBAUEDRD8uhAKBA4E6QQNBAUEDRD8GgxODBoYHgQGBA4EHggmDE4MGhgREAkc/BYQFgQaBBYQFiAaBAYEDgQeCCIQFgQaBBYQFiAZBBUQ/BIUEgwSDA4UFggSCBoEBgQOBB4IHhQSDBIMDhQWCBIIGQQVEPwSCAYIFgwKDBIIBggWCBIICgQOBAYEDgRCCAYIFgwKDBIIBggWCBIICQQNBAUEDRD8HggaGCIIFggSCA4MDgxSCBoYIggWCBIIDQwNDAUM/B4IHhAmCBYIEghCKBoIHhAmCBYIEgj8XggeECYIFggSCEIoGggeECYIFggSCPxeCBoYIggWCBIIgggaGCIIFggSCPxeCBYMCgweCBYIEgiCCBYMCgweCBYIEgj8XggSDBIMGggWCBIIUggqCBIMEgwaCBYIEgj8XggWBBoEHggWIFIIKggWBBoEHggWIPxeCFIIGhhWCCoIUggaGPz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/IQ==",
@@ -707,6 +708,239 @@
       "right",
       "square",
       "exe"
+    ],
+    "science-postfix-overflow-error": [
+      "home",
+      "1",
+      "settings",
+      "3",
+      "3",
+      "1",
+      "1",
+      "settings",
+      "2",
+      "3",
+      "2",
+      "ac",
+      "1",
+      "times-ten",
+      "5",
+      "0",
+      "right",
+      "square",
+      "divide",
+      "1",
+      "times-ten",
+      "9",
+      "9",
+      "exe"
+    ],
+    "science-postfix-overflow-back": [
+      "home",
+      "1",
+      "settings",
+      "3",
+      "3",
+      "1",
+      "1",
+      "settings",
+      "2",
+      "3",
+      "2",
+      "ac",
+      "1",
+      "times-ten",
+      "5",
+      "0",
+      "right",
+      "square",
+      "divide",
+      "1",
+      "times-ten",
+      "9",
+      "9",
+      "exe",
+      "back"
+    ],
+    "science-postfix-exponent-square": [
+      "home",
+      "1",
+      "settings",
+      "3",
+      "3",
+      "1",
+      "1",
+      "settings",
+      "2",
+      "3",
+      "2",
+      "ac",
+      "1",
+      "times-ten",
+      "5",
+      "0",
+      "right",
+      "square",
+      "divide",
+      "1",
+      "times-ten",
+      "9",
+      "9",
+      "exe",
+      "back",
+      "ac",
+      "1",
+      "times-ten",
+      "3",
+      "right",
+      "square",
+      "exe",
+      "left",
+      "left",
+      "ac",
+      "2",
+      "times-ten",
+      "3",
+      "square"
+    ],
+    "science-postfix-exponent-square-result": [
+      "home",
+      "1",
+      "settings",
+      "3",
+      "3",
+      "1",
+      "1",
+      "settings",
+      "2",
+      "3",
+      "2",
+      "ac",
+      "1",
+      "times-ten",
+      "5",
+      "0",
+      "right",
+      "square",
+      "divide",
+      "1",
+      "times-ten",
+      "9",
+      "9",
+      "exe",
+      "back",
+      "ac",
+      "1",
+      "times-ten",
+      "3",
+      "right",
+      "square",
+      "exe",
+      "left",
+      "left",
+      "ac",
+      "2",
+      "times-ten",
+      "3",
+      "square",
+      "exe"
+    ],
+    "science-postfix-after-science-power": [
+      "home",
+      "1",
+      "settings",
+      "3",
+      "3",
+      "1",
+      "1",
+      "settings",
+      "2",
+      "3",
+      "2",
+      "ac",
+      "1",
+      "times-ten",
+      "5",
+      "0",
+      "right",
+      "square",
+      "divide",
+      "1",
+      "times-ten",
+      "9",
+      "9",
+      "exe",
+      "back",
+      "ac",
+      "1",
+      "times-ten",
+      "3",
+      "right",
+      "square",
+      "exe",
+      "left",
+      "left",
+      "ac",
+      "2",
+      "times-ten",
+      "3",
+      "square",
+      "exe",
+      "ac",
+      "2",
+      "times-ten",
+      "3",
+      "right",
+      "power"
+    ],
+    "science-postfix-after-science-power-result": [
+      "home",
+      "1",
+      "settings",
+      "3",
+      "3",
+      "1",
+      "1",
+      "settings",
+      "2",
+      "3",
+      "2",
+      "ac",
+      "1",
+      "times-ten",
+      "5",
+      "0",
+      "right",
+      "square",
+      "divide",
+      "1",
+      "times-ten",
+      "9",
+      "9",
+      "exe",
+      "back",
+      "ac",
+      "1",
+      "times-ten",
+      "3",
+      "right",
+      "square",
+      "exe",
+      "left",
+      "left",
+      "ac",
+      "2",
+      "times-ten",
+      "3",
+      "square",
+      "exe",
+      "ac",
+      "2",
+      "times-ten",
+      "3",
+      "right",
+      "power",
+      "exe"
     ]
   },
   "statuses": {
@@ -799,7 +1033,8 @@
       "up"
     ]
   },
-  "referenceOnly": {
+  "referenceOnly": {},
+  "resolvedReferenceOnly": {
     "science-postfix-overflow-error": {
       "keys": [
         "home",
@@ -827,7 +1062,8 @@
         "9",
         "exe"
       ],
-      "reason": "The error panel matches, but the following Back caret still differs. Kept with the unresolved stateful continuation rather than counted alone."
+      "reason": "The error panel matches, but the following Back caret still differs. Kept with the unresolved stateful continuation rather than counted alone.",
+      "resolved": "2026-11-23:complete native pixels/statuses now match; independent controls in classpad-880-science-key-controls-lcd.json."
     },
     "science-postfix-overflow-back": {
       "keys": [
@@ -857,7 +1093,8 @@
         "exe",
         "back"
       ],
-      "reason": "Native leaves the scientific exponent for the baseline end caret after this overflow; source remains inside the last exponent. Bounded independent seed confirms the difference."
+      "reason": "Native leaves the scientific exponent for the baseline end caret after this overflow; source remains inside the last exponent. Bounded independent seed confirms the difference.",
+      "resolved": "2026-11-23:complete native pixels/statuses now match; independent controls in classpad-880-science-key-controls-lcd.json."
     },
     "science-postfix-exponent-square": {
       "keys": [
@@ -901,7 +1138,8 @@
         "3",
         "square"
       ],
-      "reason": "Native places the square inside the existing exponent visually, while the source renders it after the scientific factor. Both numeric results are2000000; full layout still differs."
+      "reason": "Native places the square inside the existing exponent visually, while the source renders it after the scientific factor. Both numeric results are2000000; full layout still differs.",
+      "resolved": "2026-11-23:complete native pixels/statuses now match; independent controls in classpad-880-science-key-controls-lcd.json."
     },
     "science-postfix-exponent-square-result": {
       "keys": [
@@ -946,7 +1184,8 @@
         "square",
         "exe"
       ],
-      "reason": "The numeric result2000000 matches but its preceding expression layout differs. Preserved without masks."
+      "reason": "The numeric result2000000 matches but its preceding expression layout differs. Preserved without masks.",
+      "resolved": "2026-11-23:complete native pixels/statuses now match; independent controls in classpad-880-science-key-controls-lcd.json."
     },
     "science-postfix-after-science-power": {
       "keys": [
@@ -997,7 +1236,8 @@
         "right",
         "power"
       ],
-      "reason": "Native continuation after the preceding exponent-square result differs in nested power/caret state. Recorded after bounded probes; no special-case substitution."
+      "reason": "Native continuation after the preceding exponent-square result differs in nested power/caret state. Recorded after bounded probes; no special-case substitution.",
+      "resolved": "2026-11-23:complete native pixels/statuses now match; independent controls in classpad-880-science-key-controls-lcd.json."
     },
     "science-postfix-after-science-power-result": {
       "keys": [
@@ -1049,7 +1289,8 @@
         "power",
         "exe"
       ],
-      "reason": "Native continuation returns2000000000 while source reports Syntax ERROR. Full cumulative keys/LCD/statuses retained for later analysis."
+      "reason": "Native continuation returns2000000000 while source reports Syntax ERROR. Full cumulative keys/LCD/statuses retained for later analysis.",
+      "resolved": "2026-11-23:complete native pixels/statuses now match; independent controls in classpad-880-science-key-controls-lcd.json."
     }
   }
 }

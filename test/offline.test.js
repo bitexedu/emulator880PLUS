@@ -45,7 +45,7 @@ function environment(options = {}) {
     const url = typeof input === 'string' ? input : input.url;
     return new Response(responses.get(url) ?? 'missing',{status:responses.has(url) ? 200 : 404});
   };
-  runInNewContext(source,{self,caches,fetch,URL,Response,Uint8Array,crypto:webcrypto});
+  runInNewContext(source,{self,caches,fetch,URL,Response,Uint8Array,TextEncoder,crypto:webcrypto});
   return {stores,responses,manifest,offline(){offline=true;},get claimed(){return claimed;},get activated(){return activated;},
     async dispatch(type,extra={}) {
       let pending;
@@ -129,4 +129,62 @@ test('POST and other origins or application paths are not intercepted',async () 
   for (const request of [new Request(scope,{method:'POST'}),new Request('https://other.test/880/'),new Request('https://example.test/580/')]) {
     assert.equal(await env.dispatch('fetch',{request}),undefined);
   }
+});
+
+test('offline readiness confirms the complete installed cache and detects eviction',async () => {
+  const env=environment(); let reply;
+  const check=async () => { await env.dispatch('message',{data:{type:'CHECK_880_CACHE'},ports:[{postMessage(v){reply=v;}}]}); return reply; };
+  assert.equal((await check()).ready,false);
+  await env.dispatch('install');
+  assert.equal((await check()).ready,true);
+  assert.equal(reply.model,'fx-880BTG PLUS');
+  env.stores.get(prefix+build).delete(scope+'app.js');
+  assert.equal((await check()).ready,false);
+});
+
+test('hosting HTML changes cannot alter the verified offline page',async () => {
+  const html='<title>880</title>';
+  const envelope=JSON.stringify({html});
+  const env=environment({manifest(m){m.offlineShell='offline-shell.json';m.assets['offline-shell.json']=digest(envelope);},
+    responses(map){map.set(scope+'offline-shell.json',envelope);map.set(scope+'index.html',html+'<script>platform</script>');}});
+  await env.dispatch('install'); env.offline();
+  const result=await env.dispatch('fetch',{request:new Request(scope)});
+  assert.equal(await result.text(),html);
+});
+
+test('a valid envelope with the wrong HTML cannot install',async () => {
+  const envelope=JSON.stringify({html:'another page'});
+  const env=environment({manifest(m){m.offlineShell='offline-shell.json';m.assets['offline-shell.json']=digest(envelope);},
+    responses(map){map.set(scope+'offline-shell.json',envelope);}});
+  await assert.rejects(env.dispatch('install'),/page checksum/);
+  assert.equal(env.stores.has(prefix+build),false);
+});
+
+test('a corrupt envelope cannot replace a usable old cache',async () => {
+  const old=prefix+'b'.repeat(64), stores=new Map([[old,new Map([['old','working']])]]);
+  const env=environment({stores,manifest(m){m.offlineShell='offline-shell.json';m.assets['offline-shell.json']=digest('expected');},
+    responses(map){map.set(scope+'offline-shell.json','tampered');}});
+  await assert.rejects(env.dispatch('install'),/checksum/);
+  assert.equal(stores.get(old).get('old'),'working');
+});
+
+test('Netlify-only header metadata is not a runtime download or offline requirement',async () => {
+  const env=environment({manifest(m){m.assets['_headers']=digest('hosting directives');}});
+  await env.dispatch('install'); env.offline();
+  let reply;
+  await env.dispatch('message',{data:{type:'CHECK_880_CACHE'},ports:[{postMessage(v){reply=v;}}]});
+  assert.equal(reply.ready,true);
+  const result=await env.dispatch('fetch',{request:new Request(scope+'app.js')});
+  assert.equal(await result.text(),'calculator()');
+});
+
+test('online-only feedback receipt HTML does not block the offline calculator',async () => {
+  const env=environment({manifest(m){m.assets['feedback-success.html']=digest('original receipt');},
+    responses(map){map.set(scope+'feedback-success.html','receipt with platform HUD');}});
+  await env.dispatch('install'); env.offline();
+  const result=await env.dispatch('fetch',{request:new Request(scope)});
+  assert.equal(await result.text(),'<title>880</title>');
+  let reply;
+  await env.dispatch('message',{data:{type:'CHECK_880_CACHE'},ports:[{postMessage(v){reply=v;}}]});
+  assert.equal(reply.ready,true);
 });

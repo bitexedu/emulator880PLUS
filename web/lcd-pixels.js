@@ -73,8 +73,8 @@ function lcdLocaleAssets880(assets,language) {
 }
 
 function lcdHome880(state, surface) {
-  const tiles = CLASS_PAD_LCD.home[state.settings.language];
-  if (!state.settings.hints || !tiles) return null;
+  const tiles = (state.settings.hints ? CLASS_PAD_LCD.home : CLASS_PAD_LCD.homeNoNumbers)[state.settings.language];
+  if (!tiles) return null;
   const count = Math.min(6, HOME_APPS.length - state.homeOffset);
   for (let slot = 0; slot < count; slot++) {
     const entry = state.homeOffset + slot;
@@ -226,14 +226,17 @@ function lcdMenu880(state, surface) {
   if ((!english && settings.language !== 'vi') || (!pairedMenu && (menu.columns !== 1 || menu.capacity !== 4))) return null;
   const rows = menu.rows.slice(menu.offset, menu.offset + menu.capacity);
   const nameOf = row => row.name.normalize('NFC');
+  const optionAssets = CLASS_PAD_LCD.optionNumbers[settings.language];
   const labels = menu.relations ? CLASS_PAD_LCD.complex.verifySigns : english
-    ? {...CLASS_PAD_LCD.labels,...CLASS_PAD_LCD.equations.englishMenu} : CLASS_PAD_LCD.labels;
+    ? {...CLASS_PAD_LCD.labels,...CLASS_PAD_LCD.equations.englishMenu,...optionAssets.labels}
+    : settings.hints ? CLASS_PAD_LCD.labels : {...CLASS_PAD_LCD.labels,...optionAssets.labels};
   if (!rows.every(row => row.numberFormat || labels[nameOf(row)] || [...nameOf(row)].every(char => CLASS_PAD_LCD.glyphs[char]))) return null;
 
   if (menu.title && state.app === 'spreadsheet') surface.sprite(lcdLocaleAssets880(CLASS_PAD_LCD.sheet,settings.language).autoTitle, 0, 0);
   if (menu.title && state.app === 'statistics') surface.sprite(lcdLocaleAssets880(CLASS_PAD_LCD.special.regression,settings.language).frequencyTitle, 0, 0);
   if (menu.title && state.app === 'math-box') surface.sprite(lcdLocaleAssets880(CLASS_PAD_LCD.trials,settings.language).viewTitle,0,0);
   if (menu.title && CLASS_PAD_LCD.numberMenus.titles[menu.title]) surface.sprite(CLASS_PAD_LCD.numberMenus.titles[menu.title],0,0);
+  if (menu.title === 'Show Option Num?' || menu.title === 'H.thị số t.chọn?') surface.sprite(optionAssets.title,0,0);
   rows.forEach((row, index) => {
     const y = (Math.floor(index / menu.columns) + Number(!!menu.title)) * 16;
     const start = pairedMenu ? index % 2 * 99 : 0;
@@ -412,7 +415,7 @@ function lcdMathLayout880(nodes, {cursorList, cursorIndex, linear, arrayMode = f
     }
   }
 
-  function slot(list, tiny, focused, isSlot, padPower = false) {
+  function slot(list, tiny, focused, isSlot, padPower = false, integralBody = false) {
     const active = list === cursorList;
     const visible = focused || active;
     const tone = !nestedFocus || visible ? 1 : 2;
@@ -482,12 +485,15 @@ function lcdMathLayout880(nodes, {cursorList, cursorIndex, linear, arrayMode = f
       if (active && index === cursorIndex) {
         const endsInAbs = list[index - 1]?.type === 'abs';
         const endsInRadical = ['sqrt','nthroot'].includes(list[index - 1]?.type);
-        const endsInLogPower = list[index - 1]?.type === 'logn' && list[index - 1].arg.at(-1)?.type === 'sup';
+        const endsInLog = list[index - 1]?.type === 'logn';
         const afterRadicalPower = endsInRadical && list[index-1].arg?.at(-1)?.type === 'sup';
         const calculus = ['integral','derivative','sum','product'];
         const endsInCalculus = calculus.includes(list[index - 1]?.type);
         const afterCalculus = list[index - 1]?.type === 'char' && list.some(item => calculus.includes(item.type));
         const beforeClosing = list[index]?.ch === ')' && list[index - 1]?.type === 'char';
+        // PLUS: after a stretched close, the caret spans that bracket.
+        // A preceding function's descender (log's g) must not add a row.
+        const tallClose = !linear && list[index - 1]?.ch === ')' && boxes[index - 1].top < (tiny ? -4 : -6);
         const afterText = list[index - 1]?.type === 'char' && list[index - 1]?.ch !== ')';
         const postfixOffset = !linear && ['²','³','⁻¹'].includes(list[index-1]?.ch) ? 2
           : !linear && list[index-1]?.ch === '¹' && list[index-2]?.ch === '⁻' ? 3 : 0;
@@ -498,14 +504,14 @@ function lcdMathLayout880(nodes, {cursorList, cursorIndex, linear, arrayMode = f
         const nextPower = !linear && list[index]?.type === 'sup' ? boxes[index] : null;
         const powerCursorBox = nextPower && {top:Math.min(nextPower.top,boxes[index-1]?.top ?? nextPower.top),
           bottom:Math.max(nextPower.bottom,boxes[index-1]?.bottom ?? nextPower.bottom)};
-        const cursorBox = powerCursorBox || (afterCalculus ? boxes[index - 1] : ['frac','sqrt'].includes(list[index]?.type) ? boxes[index]
+        const cursorBox = powerCursorBox || (afterCalculus || tallClose || integralBody && list[index-1]?.ch === ')' ? boxes[index - 1] : ['frac','sqrt','integral'].includes(list[index]?.type) ? boxes[index]
           : beforeClosing || afterText || ['frac','mixed','sqrt','nthroot','abs'].includes(list[index-1]?.type)
             ? boxes[index - 1] : listBox);
         const cursorFraction = list[index]?.type === 'frac' ? list[index]
           : list[index - 1]?.type === 'frac' ? list[index - 1] : postfixFraction ? postfixBase : null;
         const radicalDenominator = cursorFraction?.den.some(node => node.type === 'sqrt');
         listBox.markers.push([listBox.width + Number(afterRadicalPower)*2, cursorBox.top, 3,
-          Math.max(tiny ? 9 : 13, Math.max(cursorBox.bottom,postfixLayout?.bottom ?? cursorBox.bottom) - cursorBox.top + Number(!tiny && !endsInAbs && !endsInRadical && !endsInLogPower && !postfixNoExtraRow && !endsInCalculus && !radicalDenominator && list[index]?.type !== 'sqrt' && !boxes[index-1]?.compactFunctionClose))]);
+          Math.max(tiny ? 9 : 13, Math.max(cursorBox.bottom,postfixLayout?.bottom ?? cursorBox.bottom) - cursorBox.top + Number(!tiny && !endsInAbs && !endsInRadical && !endsInLog && !postfixNoExtraRow && !endsInCalculus && !radicalDenominator && !['sqrt','integral'].includes(list[index]?.type) && !boxes[index-1]?.compactFunctionClose))]);
       }
       if (!list[index]) break;
       const part = boxes[index];
@@ -524,7 +530,8 @@ function lcdMathLayout880(nodes, {cursorList, cursorIndex, linear, arrayMode = f
       if (linear) return parts(a, text('┘'), b);
       const wide = Math.max(a.width, b.width);
       const box = lcdBox880(wide + 4);
-      const gap = tiny || (a.bottom - a.top > 12 && num.at(-1)?.type !== 'sup') ? 1 : 2;
+      const powerTail = num.at(-1)?.type === 'sup' && !num.some(node => ['sqrt','nthroot'].includes(node.type));
+      const gap = tiny || (a.bottom - a.top > 12 && !powerTail) ? 1 : 2;
       lcdPlace880(box, a, 2 + Math.floor((wide - a.width) / 2), -gap - a.bottom);
       lcdPlace880(box, b, 2 + Math.floor((wide - b.width) / 2), 3 - b.top);
       box.ink.push([null, 1, 0, tone, wide + 3, 1]);
@@ -544,7 +551,7 @@ function lcdMathLayout880(nodes, {cursorList, cursorIndex, linear, arrayMode = f
     function radical(radicand) {
       const tall = radicand.top < -6;
       const tail=item.arg?.at(-1);
-      const fixedPowerTail=!tiny && (['²','³','⁻¹'].includes(tail?.ch) ||
+      const fixedPowerTail=!tiny && (tail?.type === 'times10' && tail.literalMultiply || ['²','³','⁻¹'].includes(tail?.ch) ||
         tail?.ch === '¹' && item.arg?.at(-2)?.ch === '⁻');
       const activePowerTail = tail?.type === 'sup' && !!cursorList?.includes(tail);
       const paddedTail = ['frac','mixed','sqrt','nthroot'].includes(tail?.type);
@@ -597,7 +604,7 @@ function lcdMathLayout880(nodes, {cursorList, cursorIndex, linear, arrayMode = f
         if (linear) { supported = false; return lcdBox880(); }
         const upper = child(item.upper, true);
         const lower = child(item.lower, true);
-        const body = child(item.body);
+        const body = slot(item.body, tiny, focused, true, false, true);
         const limitWidth = 13 + Math.max(upper.width, lower.width);
         const box = lcdBox880(limitWidth + body.width + 22, -17, 14);
         box.ink.push([assets.integral, 0, -17, tone]);
@@ -672,6 +679,17 @@ function lcdMathLayout880(nodes, {cursorList, cursorIndex, linear, arrayMode = f
       case 'epow':
       case 'times10':
         return parts(text({pow10:'10', epow:'e', times10:'×10'}[item.type]), sup(item.exp,item.type === 'times10' && !linear));
+      case 'scientific': {
+        const exponent = child(item.exp, true);
+        const suffix = lcdBox880(24 + exponent.width);
+        suffix.ink.push([assets.scientificInputBase, 0, -6, tone]);
+        lcdPlace880(suffix, exponent, 22, -6);
+        if (!item.mantissa.length) return suffix;
+        const inside = parts(child(item.mantissa), suffix);
+        if (!item.parenthesized) return inside;
+        const brackets = bracketPair(inside, tiny, false, tone) || [text('('), text(')')];
+        return parts(brackets[0], inside, brackets[1]);
+      }
       case 'logn': {
         if (linear) return parts(text('log('), child(item.base), text(','), child(item.arg), text(')'));
         const base = child(item.base, true);
@@ -830,9 +848,10 @@ function lcdComplexPart880(text) {
   return nodes;
 }
 
-function drawLCDMath880(surface, box, x, y, invert = false) {
+function drawLCDMath880(surface, box, x, y, invert = false, wholeGlyphs = false) {
   for (const [sprite, dx, dy, tone, w, h] of box.ink) {
     const ink = invert ? 0 : tone;
+    if (wholeGlyphs && sprite && (x + dx < 0 || x + dx + sprite[0] > LCD880_WIDTH)) continue;
     if (sprite) surface.sprite(sprite, x + dx, y + dy, () => ink);
     else surface.rect(x + dx, y + dy, w, h, ink);
   }
@@ -912,7 +931,14 @@ function lcdMath880(state, surface, view) {
       if (data.nodes.some(node => node.type === 'sqrt')) cy--;
       h = 13;
     }
-    const cursorCellWidth = h === 9 ? Math.max(6,w) : w;
+    let cursorCellWidth = h === 9 ? Math.max(6,w) : w;
+    // PLUS MathI exposes the whole cell to the right of a flat-slot
+    // caret. Goto and ordinary LEFT/RIGHT use the same eight-pixel pan.
+    if (!linear && app === 'calculate' && !state.verify &&
+        data.cursorIndex < data.cursorList.length && data.cursorList.every(node => node.type === 'char')) {
+      const next = lcdMathLayout880(data.nodes,{cursorList:data.cursorList,cursorIndex:data.cursorIndex+1})?.markers[0];
+      if (next) cursorCellWidth += Math.max(0,next[0]-cx);
+    }
     const overflow = Math.max(0, cx + cursorCellWidth - (LCD880_WIDTH - 8));
     x = linear ? 0 : -Math.ceil(overflow / 8) * 8;
     y -= Math.max(0, cy + y + h - LCD880_BODY);
@@ -926,7 +952,7 @@ function lcdMath880(state, surface, view) {
   if (arrayPreviousResults.length < 3 && !data.lineReplayOnly) {
     const expressionBox = wrappedArrayExpression ? {...expr,ink:expr.ink.map(([sprite,dx,dy,...rest]) =>
       [sprite,dx % 187,dy + Math.floor(dx / 187)*14,...rest])} : expr;
-    drawLCDMath880(surface, expressionBox, x, y);
+    drawLCDMath880(surface, expressionBox, x, y, false, !linear && app === 'calculate');
   }
   if (arrayMode && editing && data.nodes.length === 0) {
     surface.sprite(lcdLocaleAssets880(CLASS_PAD_LCD.arrays,settings.language).prompt[app], 0, 34);
@@ -950,13 +976,15 @@ function lcdMath880(state, surface, view) {
     return settings.language === 'vi' ? 'Nhập phương trình' : 'Input Equation';
   }
   if (x < 0) {
-    surface.rect(0, 0, 11, Math.max(13,y + expr.bottom), 0);
+    const band = !linear && app === 'calculate';
+    surface.rect(0, band ? y - 6 : 0, 11, band ? 14 : Math.max(13,y + expr.bottom), 0);
     surface.sprite(CLASS_PAD_LCD.symbols.scrollLeft, 0, y - 6);
   }
   if (!wrappedArrayExpression && expr.width + x > LCD880_WIDTH) {
     const {scrollRight, resultScrollRight} = CLASS_PAD_LCD.symbols;
     const edge = LCD880_WIDTH - 11;
-    surface.rect(edge, 0, 11, editing ? Math.max(13,y + expr.bottom) : y + expr.bottom, 0);
+    const band = !linear && app === 'calculate';
+    surface.rect(edge, band ? y - 6 : 0, 11, band ? 14 : editing ? Math.max(13,y + expr.bottom) : y + expr.bottom, 0);
     surface.sprite(editing ? scrollRight : resultScrollRight, edge + Number(editing), editing ? y - 6 : y - 3);
   }
   if (verifying) {
@@ -2179,8 +2207,50 @@ function lcdGeometry880(state, surface, view, assets = CLASS_PAD_LCD.geometry) {
   return data.title + ', ' + fields.map((field,index) => field + '=' + (values?.[index] ?? data.assigned?.[index] ?? '')).join(', ');
 }
 
+function lcdEquationVerify880(state,surface,view) {
+  const {data,settings}=state;
+  const assets=CLASS_PAD_LCD.equationVerify[settings.language];
+  if(!assets) return null;
+  if(data.stage==='feedback') {
+    surface.sprite(assets[data.correct?'true':'false'],0,0);
+    if(!data.correct) {
+      surface.rect(0,48,188,15,1); surface.sprite(assets.back,0,48,()=>0);
+    } else for(const [index,key] of ['return','confirm'].entries()) {
+      const selected=index===data.cursor;
+      if(selected) surface.rect(0,32+16*index,188,15,1);
+      surface.sprite(assets[key],0,32+16*index,()=>selected?0:1);
+    }
+    return data.correct?'True':'False';
+  }
+  if(data.stage!=='answers') return null;
+  const polynomial=data.typeId.startsWith('poly');
+  const capacity=polynomial?3:4, offset=Math.max(0,data.cursor-capacity+1);
+  if(polynomial) surface.sprite(data.kind==='minimum' || data.kind==='maximum' ? assets[data.kind]
+    : CLASS_PAD_LCD.equationVerify.header,0,0);
+  const ready=data.values.every(value=>value!=='');
+  for(let index=offset;index<Math.min(data.names.length+1,offset+capacity);index++) {
+    const y=(index-offset+Number(polynomial))*16;
+    const editing=index===data.cursor && index<data.names.length && !!data.draftNodes;
+    const chosen=index===data.cursor && !editing && (index<data.names.length || ready);
+    if(chosen) surface.rect(0,y,188,15,1);
+    if(index===data.names.length) {surface.sprite(ready?assets.run:assets.runOff,0,y,ready?()=>chosen?0:1:undefined);continue;}
+    const label=assets.fields[data.names[index]];
+    if(!label)return null;
+    surface.sprite(label,0,y,()=>chosen?0:1);
+    const nodes=editing?data.draftNodes:lcdResultNodes880({result:data.values[index]});
+    if(!editing) nodes.forEach(node=>{if(node.ch==='i')node.imaginary=true;});
+    const box=lcdMathLayout880(nodes,{linear:true,cursorList:editing?data.cursorList:null,cursorIndex:data.cursorIndex});
+    if(!box)return null;
+    drawLCDMath880(surface,box,33,y+7,chosen);
+    if(editing && box.markers[0]) {const [x,top,w,h]=box.markers[0];view.cursor=[33+x,y+7+top,w,Math.min(13,h)];}
+  }
+  if(data.names.length+1>capacity) lcdScrollbar880(surface,offset,data.names.length+1,capacity);
+  return data.names.map((name,index)=>name+':'+data.values[index]).join(', ');
+}
+
 function lcdSpecial880(state, surface, view) {
   const {app, data} = state;
+  if(data.mode==='equation-verify') return lcdEquationVerify880(state,surface,view);
   if (data.mode === 'calc' && data.operation === 'calc') return lcdCalc880(state,surface,view);
   if (data.trialStage) return lcdTrials880(state,surface,view);
   if (data.mode === 'trial-attempts') {
@@ -2321,10 +2391,12 @@ function lcdArrayCell880(surface, value, right, y, tone, maxWidth = 6, font = CL
 }
 
 function buildLCDFrame880(state) {
-  if (!state.power || state.notice) return null;
+  if (!state.power || state.notice && state.notice.kind!=='contrast') return null;
   const surface = lcdSurface880(LCD880_WIDTH, LCD880_BODY);
   const view = {pixels:surface.pixels, cursor:null};
-  const text = state.menu ? lcdMenu880(state, surface)
+  const text = state.notice?.kind==='contrast'
+    ? (surface.sprite(CLASS_PAD_LCD.contrast[state.settings.language],0,0),state.notice.title)
+    : state.menu ? lcdMenu880(state, surface)
     : state.home ? lcdHome880(state, surface)
       : state.data.mode === 'error' ? lcdError880(state, surface)
         : state.app === 'base-n' ? lcdBase880(state, surface, view)

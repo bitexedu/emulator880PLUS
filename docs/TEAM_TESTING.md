@@ -1,6 +1,6 @@
 # Kiểm tra demo cùng team BITEX
 
-1. Mở [demo](https://fx-880btg-plus-demo.dtran1904.chatgpt.site/), tải lại trang, mở **Nhật ký phím** và xác nhận `0.7.0-demo.2`.
+1. Mở [demo](https://fx880btgplus.netlify.app/), tải lại trang, mở **Nhật ký phím** và xác nhận `0.7.0-demo.19`.
 2. Thử sáu bài mẫu trong [hướng dẫn demo](DEMO_GUIDE.txt), sau đó kiểm tra nhóm tính năng mình phụ trách.
 3. Khi thấy lỗi, ghi trạng thái ban đầu, cài đặt và toàn bộ chuỗi phím. Chụp ảnh và tải JSON từ Nhật ký phím.
 4. Tạo Issue cho từng lỗi, kèm kết quả mong đợi và kết quả thực tế. Ghi rõ nguồn kỳ vọng: máy vật lý, đúng mẫu PLUS trên ClassPad hoặc tên/trang tài liệu.

@@ -90,8 +90,8 @@ function createCalculator880(savedSettings = {}) {
   applySettings();
 
   function open(rows, {columns = 1, capacity = 4, direct = true, highlight = true, initial = 0, quick = false, wrap = false,
-    size = null, title = null, relations = false, circleTypes = false, trialForm = null, trialViews = false, variables = null, symbols = false, constants = false, conversions = false, confirmation = null, mathBoxRoot = false, explorerRoot = false, resetKind = null, sheetPreference = false} = {}) {
-    if (rows.length) menus.push({rows, columns, capacity, direct, highlight, quick, wrap, size, title, relations, circleTypes, trialForm, trialViews, variables, symbols, constants, conversions, confirmation, mathBoxRoot, explorerRoot, resetKind, sheetPreference, selected: initial,
+    size = null, title = null, relations = false, circleTypes = false, trialForm = null, trialViews = false, variables = null, symbols = false, constants = false, conversions = false, confirmation = null, mathBoxRoot = false, explorerRoot = false, resetKind = null, sheetPreference = false, settingsContext = !!top()?.settingsContext, catalogContext = !!top()?.catalogContext} = {}) {
+    if (rows.length) menus.push({rows, columns, capacity, direct, highlight, quick, wrap, size, title, relations, circleTypes, trialForm, trialViews, variables, symbols, constants, conversions, confirmation, mathBoxRoot, explorerRoot, resetKind, sheetPreference, settingsContext, catalogContext, selected: initial,
       offset: Math.max(0, initial - capacity + 1)});
   }
 
@@ -168,8 +168,12 @@ function createCalculator880(savedSettings = {}) {
       ], 'setDecimalMark')),
       branch(label('Dấu cách 3 chsố', 'Digit Separator'), () => choices('separator', onOff(), 'setDigitSeparator'),
         {title:label('BẬT dcách 3 chsố?','Digit Separator?')}),
-      branch(label('Phím ×10ˣ', '×10ˣ Key'), () => choices('power', [['power', '×10ˣ (Power)'], ['scientific', '×10ˣ (Sci Notat)']])),
-      branch(label('Phím FORMAT', 'FORMAT Key'), () => choices('format', [['toggle', 'S⇔D'], ['menu', 'Format Menu']]))
+      branch(label('Phím ×10ˣ', '×10ˣ Key'), () => choices('power', [
+        ['power', label('×10ˣ (Mũ)','×10ˣ (Power)')], ['scientific',label('×10ˣ (KH k.học)','×10ˣ (Sci Notat)')]
+      ]), {title:label('Phím ×10ˣ','×10ˣ Key')}),
+      branch(label('Phím FORMAT', 'FORMAT Key'), () => choices('format', [
+        ['toggle', label('ₐᵦπ√ ↔ Thập phân','ₐᵦπ√ ↔ Decimal')], ['menu',label('Menu định dạng','Format Menu')]
+      ]), {title:label('Phím FORMAT','FORMAT Key')})
     ];
   }
 
@@ -178,7 +182,8 @@ function createCalculator880(savedSettings = {}) {
       action(label('Sáng/tối Mhình', 'Contrast'), () => showNotice(label('Tương phản', 'Contrast'), '◀  ▪  ▶', 'contrast'), {arrow:true}),
       branch(label('Tự động tắt', 'Auto Power Off'), () => choices('autoOff', [[10, '10 Min.'], [60, '60 Min.']])),
       branch(label('Ngôn ngữ', 'Language'), () => choices('language', [['en', 'English'], ['vi', 'Tiếng Việt']]), {wrap:true}),
-      branch(label('H.thị số t.chọn', 'Show Option Num'), () => choices('hints', onOff())),
+      branch(label('H.thị số t.chọn', 'Show Option Num'), () => choices('hints', onOff()),
+        {title:label('H.thị số t.chọn?', 'Show Option Num?')}),
       branch('QR Code', () => choices('qr', [[3, 'Version 3'], [11, 'Version 11']]))
     ];
   }
@@ -258,7 +263,10 @@ function createCalculator880(savedSettings = {}) {
       action(quick ? '°′″' : label('Độ Phút Giây','Degs Mins Secs'), call('inputDms'))
     ],
     others: () => [
-      action('Ans',call('inputAns')), action('π',call('inputPi')), action('e', () => engine.inputEuler()),
+      action('Ans',call('inputAns')),
+      ...((app === 'calculate' && variableEditing === null && engine.getState().mode !== 'function-edit')
+        ? [action('PreAns',call('inputPreAns'))] : []),
+      action('π',call('inputPi')), action('e', () => engine.inputEuler()),
       action('√(',call('inputSqrt')), action('ˣ√(',call('inputNthRoot')),
       action('⁻¹',call('inputOperator','⁻¹')), action('²',call('inputOperator','²')),
       action('^(',call('inputPower')), action('−',call('inputNegative')),
@@ -279,7 +287,7 @@ function createCalculator880(savedSettings = {}) {
         ])),
         branch(label('Gtrị Thậplụcph…','Hex Value'), () =>
           [...'ABCDEF'].map(letter => action(letter, call('inputBaseNLetter', letter))), pairColumns)
-      ]);
+      ], {catalogContext:true});
       return;
     }
     const rows = [
@@ -304,6 +312,8 @@ function createCalculator880(savedSettings = {}) {
     if (app === 'statistics' && ['input','result'].includes(engine.getState().mode)) {
       rows.unshift(branch(label('Thống kê', 'Statistics'), statisticsCatalog));
     }
+    if (app === 'equation' && engine.getCalcMode() === 'calculate')
+      rows.unshift(branch(label('Phươg trình','Equation'), () => [action('=',call('inputRelational','='))]));
     if (app === 'complex') rows.unshift(branch(label('Số phức', 'Complex'), complexCatalog));
     if (app === 'matrix' || app === 'vector') rows.unshift(branch(appName(), () => memoryOptions(app)));
     if (sheet) rows.unshift(branch(appName(), () => [
@@ -323,7 +333,7 @@ function createCalculator880(savedSettings = {}) {
     if (['calculate','complex'].includes(app) && engine.isVerifyActive()) {
       rows.unshift(item(label('Kiểm chứng', 'Verify'), openVerifyRelations, {arrow:true}));
     }
-    open(rows);
+    open(rows, {catalogContext:true});
   }
 
   function statisticsCatalog() {
@@ -506,12 +516,12 @@ function createCalculator880(savedSettings = {}) {
         engine[id + 'Command']('calc');
         break;
       case 'math-box':
-        engine.setInputOutput(settings.io);
+        engine.setInputOutput(settings.io, {preserveRegisteredFunctions:true});
         open([
           item(label('Tung Xúc xắc','Dice Roll'), () => startTrials(6)),
           item(label('Tung Đồng xu','Coin Toss'), () => startTrials(2)),
           action(label('Đường thẳng Số','Number Line'), () => {
-            engine.setInputOutput('lineio');
+            engine.setInputOutput('lineio', {preserveRegisteredFunctions:true});
             lineBox = {stage:'list', cursor:0, entries:[null,null,null], target:0, draft:false};
           }),
           action(label('Đường tròn','Circle'), () => {
@@ -606,6 +616,17 @@ function createCalculator880(savedSettings = {}) {
 
   function openTools() {
     const rows = [];
+    if(app==='equation' && engine.getCalcMode()==='equation') {
+      if(engine.getState().typeId.startsWith('poly')) rows.push(branch(label('Nghiệm Phức','Complex Roots'),()=>[
+        [true,label('Mở','On')],[false,label('Tắt','Off')]
+      ].map(([value,name])=>item(name,()=>engine.setEquationComplexResults(value),
+        {radio:()=>engine.getEquationComplexResults()===value})),
+        {title:label('Nghiệm Phức?','Complex Roots?')}));
+      if(['simul2','poly2'].includes(engine.getState().typeId))
+        rows.push(action(engine.isVerifyActive() ? label('Kiểm chứng Tắt','Verify OFF') : label('Kiểm chứng Bật','Verify ON'),
+          call('equationVerificationCommand','toggle')));
+      open(rows);return;
+    }
     if (app === 'calculate') {
       if (!engine.isVerifyActive()) rows.push(action('CALC', call('calc')));
       if (!settings.io.startsWith('line')) rows.push(action(label('Hoàn tác', 'Undo'), call('undoEdit')));
@@ -702,6 +723,22 @@ function createCalculator880(savedSettings = {}) {
     open(rows);
   }
 
+  function equationVerificationMenu() {
+    const data=engine.getState();
+    if(data.mode!=='equation-verify') return;
+    const choose=command=>()=>{engine.equationVerificationCommand(command);equationVerificationMenu();};
+    if(data.stage==='choice') open(data.typeId==='poly2' ? [
+      item(label('Nghiệm','Roots'),choose('input'),{arrow:true}),
+      action(label('Lớn nhất','Maximum'),choose('maximum')),
+      action(label('Nhỏ nhất','Minimum'),choose('minimum'))
+    ] : [action(label('Nhập Nghiệm','Input Solution'),choose('input')),
+      action(label('Vô nghiệm','No Solution'),choose('none')),
+      action(label('Vô số nghiệm','Infinite Solution'),choose('infinite'))],{initial:data.cursor || 0});
+    else if(data.stage==='count') open(Array.from({length:data.degree},(_,index)=>
+      action((index+1)+label(' Nghiệm',' Solution'+(index?'s':'')),choose('count:'+(index+1)))),{initial:data.cursor || 0});
+    if(top()) top().equationVerification=true;
+  }
+
   function tableFunctionsMenu() {
     return [
       action(label('Xác định f(x)','Define f(x)'), call('tableCommand','f')),
@@ -737,7 +774,7 @@ function createCalculator880(savedSettings = {}) {
     const reenteringVerify = app === 'calculate' && nextApp === 'calculate' && engine.isVerifyActive();
     app = nextApp;
     engine.setInputLimit(app === 'spreadsheet' ? 49 : 199);
-    engine.setInputOutput(app === 'spreadsheet' ? 'lineio' : settings.io);
+    engine.setInputOutput(app === 'spreadsheet' ? 'lineio' : settings.io, {preserveRegisteredFunctions:true});
     explorer = null;
     mathBox = null;
     lineBox = null;
@@ -1162,7 +1199,7 @@ function createCalculator880(savedSettings = {}) {
       if (exit || enter) t.grab = null;
       else moveSheetSelection(key, grab);
     } else if (key === 'catalog') shift ? quickCatalog() : openCatalog();
-    else if (key === 'settings') open(settingsRoot(), {wrap:true});
+    else if (key === 'settings') open(settingsRoot(), {wrap:true, settingsContext:true});
     else if (key === 'tools' && !draft) openSheetTools();
     else if (exit) {
       engine.clear();
@@ -1505,8 +1542,10 @@ function createCalculator880(savedSettings = {}) {
       const next = x.cursor + distance;
       if (key !== 'up' || next >= 0) x.cursor = next < 0 ? count : next > count ? 0 : next;
     }
-    else if (key === 'up' || key === 'down' || pageKeys.includes(key)) {
-      const distance = key === 'up' || key === 'page-up' ? -1 : 1;
+    else if (pageKeys.includes(key)) {
+      if(!x.draft) x.cursor=key==='page-up'?0:count;
+    } else if (key === 'up' || key === 'down') {
+      const distance = key === 'up' ? -1 : 1;
       x.cursor = (x.cursor + count + 1 + distance) % (count + 1);
     } else if (x.cursor < count && (coordinates || !x.form.memories)) {
       if (digits.test(key) || primaryActions[key] || (shift && shiftedActions[key])) {
@@ -1765,6 +1804,14 @@ function createCalculator880(savedSettings = {}) {
   function moveMenu(key, menu) {
     const max = menu.quick ? Math.floor((menu.rows.length - 1) / menu.capacity) * menu.capacity
       : Math.max(0, Math.ceil(menu.rows.length / menu.columns) * menu.columns - menu.capacity);
+    // The unhighlighted SHIFT+CATALOG list changes whole pages with ↑/↓,
+    // wrapping at the ends. The double-arrow page keys keep their clamp.
+    if (menu.quick && ['up','down'].includes(key)) {
+      const offset = menu.offset + (key === 'down' ? 1 : -1) * menu.capacity;
+      menu.offset = offset < 0 ? max : offset > max ? 0 : offset;
+      menu.selected = menu.offset;
+      return;
+    }
     if (key === 'page-up' || key === 'page-down') {
       const forward = key === 'page-down';
       const offset = Math.max(0, Math.min(max, menu.offset + (forward ? 1 : -1) * menu.capacity));
@@ -1861,7 +1908,7 @@ function createCalculator880(savedSettings = {}) {
       circleBox = null;
       sheet = null;
       engine.setInputLimit(app === 'spreadsheet' ? 49 : 199);
-      engine.setInputOutput(app === 'spreadsheet' ? 'lineio' : settings.io);
+      engine.setInputOutput(app === 'spreadsheet' ? 'lineio' : settings.io, {preserveRegisteredFunctions:true});
       engine.setCalcMode(['spreadsheet','math-box','math-explorer'].includes(app) ? 'calculate' : app);
       if (base) engine.baseNConvert(base.id);
       engine.powerOn();
@@ -1921,11 +1968,11 @@ function createCalculator880(savedSettings = {}) {
       if (notice.kind === 'contrast' && ['left','right'].includes(key)) {
         settings.contrast = Math.max(-3, Math.min(3, settings.contrast + (key === 'right' ? 1 : -1)));
       }
-      if (['back','ac','ok','exe'].includes(key)) {
+      if ((notice.kind==='contrast' ? ['back','ac'] : ['back','ac','ok','exe']).includes(key)) {
         const fromContrast = notice.kind === 'contrast';
         notice = null;
         if (fromContrast && key === 'back') {
-          open(settingsRoot(), {wrap:true});
+          open(settingsRoot(), {wrap:true, settingsContext:true, initial:1});
           open(systemSettings());
         } else if (['math-box','math-explorer'].includes(app) && !mathBox && !explorer) home = true;
       }
@@ -2018,29 +2065,38 @@ function createCalculator880(savedSettings = {}) {
 
       if (key === 'right' && activeMenu.geometryMemoryMenu) return;
       if (key === 'left' && activeMenu.geometryMemoryMenu) { menus = []; return; }
-      if (key === 'settings' && activeMenu.mathBoxRoot) { open(settingsRoot(), {wrap:true}); return; }
+      if (key === 'settings' && activeMenu.settingsContext) return;
+      if (key === 'settings' && activeMenu.mathBoxRoot) { open(settingsRoot(), {wrap:true, settingsContext:true}); return; }
       if (key === 'settings' && activeMenu.sheetPreference) return;
       if (key === 'ac' || key === 'settings') {
         const restoreMathBox = menus.some(menu => menu.mathBoxRoot);
         menus = [];
+        if(activeMenu.equationVerification) engine.equationVerificationCommand('cancel');
         if (restoreMathBox) modeMenu('math-box');
         return;
       }
       if (key === 'back' || (key === 'left' && activeMenu.columns === 1 && menus.length > 1)) {
         menus.pop();
+        if(activeMenu.equationVerification && !menus.length) engine.equationVerificationCommand('cancel');
         if (activeMenu.explorerRoot) { home = true; homeIndex = 13; homeOffset = 9; }
         if (activeMenu.statisticsTypeMenu) { home = true; homeIndex = 1; homeOffset = 0; }
         if (activeMenu.statisticsRunMenu) engine.statisticsCommand('data');
         return;
       }
-      const localShortcut = activeMenu.direct && settings.hints ? shortcutIndex(key,activeMenu.constants) : -1;
+      const localShortcut = activeMenu.direct ? shortcutIndex(key,activeMenu.constants) : -1;
       const shortcut = localShortcut >= 0 && activeMenu.quick ? activeMenu.offset + localShortcut : localShortcut;
       if (['ok','exe'].includes(key) || (key === 'right' && activeMenu.columns === 1 && activeMenu.rows[activeMenu.selected].arrow) || (shortcut >= 0 && shortcut < activeMenu.rows.length)) {
         const choice = activeMenu.rows[shortcut >= 0 ? shortcut : activeMenu.selected];
         if (choice) {
-          if ((choice.radio || activeMenu.sheetTools) && shortcut >= 0) {
+          // A numeric CATALOG shortcut must remember its parent selection before
+          // opening a child, including the scroll position restored by Back.
+          if ((choice.radio || activeMenu.sheetTools || activeMenu.settingsContext || activeMenu.catalogContext) && shortcut >= 0) {
             activeMenu.selected = shortcut;
             if (activeMenu.sheetTools) activeMenu.offset = Math.max(0,shortcut-activeMenu.capacity+1);
+            if (activeMenu.settingsContext || activeMenu.catalogContext) {
+              if (shortcut < activeMenu.offset) activeMenu.offset = shortcut;
+              if (shortcut >= activeMenu.offset + activeMenu.capacity) activeMenu.offset = shortcut - activeMenu.capacity + 1;
+            }
           }
           choice.choose();
           if (sheet && !sheet.fill && engine.getState().nodes?.length) sheet.draft = true;
@@ -2050,7 +2106,7 @@ function createCalculator880(savedSettings = {}) {
     }
     if (home) {
       if (key === 'settings') { showNotice('Get Started', label('Hướng dẫn qua mã QR', 'QR code guide')); return; }
-      const index = settings.hints ? HOME_APPS.findIndex(entry => entry.key === key) : -1;
+      const index = HOME_APPS.findIndex(entry => entry.key === key);
       if (index >= 0 || key === 'ok' || key === 'exe') launch(index >= 0 ? index : homeIndex);
       else if (pageKeys.includes(key)) {
         homeOffset = Math.max(0, Math.min(9, homeOffset + (key === 'page-up' ? -6 : 6)));
@@ -2069,7 +2125,7 @@ function createCalculator880(savedSettings = {}) {
       if (engine.getState().mode === 'calc' && engine.getState().operation === 'calc') return;
       if (app === 'statistics' && ['stats','regression'].includes(engine.getState().screen)) return;
       if (['calculate','complex'].includes(app) && engine.getState().mode === 'result') settingsResult ||= engine.getState();
-      open(settingsRoot(), {wrap:true});
+      open(settingsRoot(), {wrap:true, settingsContext:true});
     }
     else if (key === 'catalog') shift ? quickCatalog() : openCatalog();
     else if (key === 'tools') {
@@ -2086,6 +2142,11 @@ function createCalculator880(savedSettings = {}) {
     else if (key === 'function') openRegisteredFunctions();
     else if (key === 'ac') engine.clear();
     else if (key === 'back') {
+      if(app==='equation' && engine.getState().mode==='equation-verify') {
+        if(engine.getState().stage==='feedback') engine.equals();
+        else engine.equationVerificationCommand('back');
+        equationVerificationMenu();return;
+      }
       if (engine.finishRegisteredFunction(false)) return;
       if (engine.backFromCalc()) return;
       if (app === 'equation' && engine.backFromSolve()) return;
@@ -2152,7 +2213,7 @@ function createCalculator880(savedSettings = {}) {
         ]);
         top().statisticsRunMenu = true;
       } else if (app === 'equation' && engine.getCalcMode() === 'calculate' && data.mode === 'input') engine.solve();
-      else engine.equals();
+      else { engine.equals(); equationVerificationMenu(); }
     } else {
       const data = engine.getState();
       const choosing = data.mode === 'calc' && (data.runSelected || data.operation === 'solve' && data.phase === 'choose');
@@ -2219,7 +2280,16 @@ function createCalculator880(savedSettings = {}) {
     }
   }
 
-  return {press:pressWithLinearHistory, getState, history, powerOff() {power = false; shifted = false; sheetData.reset();}};
+  return {press:pressWithLinearHistory, getState, history,
+    // Cổng trao đổi dữ liệu (bridge.js): chỉ ĐỌC trạng thái. Ứng dụng có dữ liệu xuất được:
+    // Tính thường, Thống kê, Bảng giá trị, Phương trình, Bất phương trình; còn lại (Màn hình chọn ứng dụng,
+    // Bảng tính, Hộp Toán học, Khám phá Toán…) trả unsupported để trang chứa báo đúng lí do.
+    exportData() {
+      const data = engine.exportData();
+      const supported = power && !home && ['calculate','statistics','table','equation','inequality'].includes(app);
+      return {...data, model: MODEL, app: home ? null : app, ...(supported ? {} : {unsupported: true})};
+    },
+    powerOff() {power = false; shifted = false; sheetData.reset();}};
 }
 
 function shortcutIndex(key, constants = false) {

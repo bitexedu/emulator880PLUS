@@ -1,0 +1,33 @@
+{
+  "source": "https://bitex-calculator-beta.netlify.app/",
+  "version": "2026.11.23-qa.1 · ca7a57a",
+  "observedOn": "2026-11-26",
+  "keys": [
+    "power",
+    "fraction",
+    "logn",
+    "up",
+    "left",
+    "right",
+    "down",
+    "sqrt",
+    "square",
+    "times-ten",
+    "shift",
+    "power"
+  ],
+  "labels": [
+    "x□",
+    "□□",
+    "log▫",
+    "▲",
+    "◀",
+    "▶",
+    "▼",
+    "√",
+    "x²",
+    "×10ˣ",
+    "SHIFT",
+    "x□"
+  ]
+}

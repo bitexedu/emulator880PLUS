@@ -33,7 +33,9 @@ def main():
     if check.returncode or not all([total, passed, failed, skipped]) or int(failed[1]) or int(skipped[1]) or total[1] != passed[1]:
         raise SystemExit(f'Preview blocked by tests; see {reports / (version + "-tests.tap")}')
     files = sorted(p for p in WEB.rglob('*') if p.is_file())
-    assets = {p.relative_to(WEB).as_posix(): sha256(p.read_bytes()).hexdigest() for p in files}
+    content = {p.relative_to(WEB).as_posix(): p.read_bytes() for p in files}
+    content['offline-shell.json'] = (json.dumps({'html': (WEB / 'index.html').read_text()}, ensure_ascii=False) + '\n').encode()
+    assets = {name: sha256(data).hexdigest() for name, data in content.items()}
     scope_digest = sha256(scope_file.read_bytes()).hexdigest()
     snapshot = sha256(json.dumps({'assets':assets,'scope':scope_digest}, sort_keys=True).encode()).hexdigest()
     commit = None
@@ -48,6 +50,7 @@ def main():
         'verification': {'command': 'node --test --test-reporter=tap test/*.test.js',
                          'tests': int(total[1]), 'passed': int(passed[1]), 'failed': 0, 'skipped': 0},
         'assets': assets,
+        'offlineShell': 'offline-shell.json',
         'scope': 'PHAM-VI-BAN-THU.md',
         'scopeSha256': scope_digest,
     }
@@ -58,6 +61,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='880-preview-') as work:
         package = Path(work) / name
         shutil.copytree(WEB, package / 'web')
+        (package / 'web' / 'offline-shell.json').write_bytes(content['offline-shell.json'])
         shutil.copy2(ROOT / 'serve.js', package / 'serve.js')
         shutil.copy2(scope_file, package / 'PHAM-VI-BAN-THU.md')
         shutil.copy2(scope_file, package / 'web' / 'PHAM-VI-BAN-THU.md')

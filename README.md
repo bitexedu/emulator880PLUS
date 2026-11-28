@@ -1,27 +1,25 @@
 # fx-880BTG PLUS — demo cho team BITEX
 
-**Phiên bản: 0.7.0-demo.2 · 20/11/2026**
+Phiên bản nguồn: **0.7.0-demo.19 · 28/11/2026**.
 
-**[Mở demo ngay](https://fx-880btg-plus-demo.dtran1904.chatgpt.site/)** — không cần đăng nhập. Nếu đang mở bản cũ, tải lại trang và kiểm tra phiên bản trong **Nhật ký phím**.
+[Mở demo Netlify](https://fx880btgplus.netlify.app/) — không cần đăng nhập. Mở Tiện ích để xem mã bản, kiểm tra cập nhật, cài ứng dụng và dùng ngoại tuyến. [Hướng dẫn cài](docs/PWA.md).
 
-Bản demo có 14 ứng dụng chính, gồm Tính thường, Phương trình, Thống kê, Phân phối, Bảng tính, Ma trận, Vectơ, Khám phá Toán và Hộp Toán học. LCD đã chuyển sang SVG để giữ nét đồng đều khi đổi kích thước; dữ liệu chữ, số, dấu tiếng Việt, ký hiệu và con trỏ giữ theo mẫu PLUS đã quan sát trên ClassPad. Dòng CASIO đã được bỏ khỏi mặt máy theo yêu cầu của dự án.
+Demo.19 tích hợp [cổng trao đổi dữ liệu](docs/CONG-TRAO-DOI-DU-LIEU.md) theo patch được cung cấp: xuất dữ liệu và tô sáng từng phím. Cổng mặc định tắt; chưa cấu hình website được phép đọc. Giữ nguyên chính sách chống nhúng. Kế thừa các sửa lỗi BITEX demo.14–15 và nhật ký phím/Sao chép Word demo.18.
 
-## Góp ý và báo lỗi
+Nhật ký dùng hình gốc của48phím CASIO. Sao chép Word cho mã như `2^3B`; dán vào Word rồi đổi sang font **CASIO ClassWiz CW01** đã cài. Dữ liệu tính toán và nhật ký xử lý trên thiết bị. Ảnh TIFF, PDF/TTF keymap gốc, Word và hồ sơ bàn giao đầy đủ được giữ ở hồ sơ dự án, không nằm trong bản chụp nguồn này.
 
-Gửi một Issue trong kho GitHub, kèm mã bản, chuỗi phím tái hiện, ảnh màn hình và JSON từ **Nhật ký phím → Tải JSON**. Ghi rõ kỳ vọng lấy từ máy vật lý, đúng mẫu PLUS trên ClassPad hay tài liệu nào. Chi tiết ở [hướng dẫn kiểm tra](docs/TEAM_TESTING.md).
+## Chạy và kiểm tra
 
-## Chạy trên máy cá nhân
-
-Cần Node.js 18 trở lên; không cần cài thư viện.
+Cần Node.js24 và Python3 để đóng gói; không cần cài thư viện.
 
 ```sh
 node serve.js
+node --test test/*.test.js
+python3 tools/build-preview.py
 ```
 
-Mở http://127.0.0.1:8870/ . Kiểm tra bằng `node --test test/*.test.js`. Đóng gói bằng `python3 tools/build-preview.py`; gói tạo ra trong `releases/`.
+Mở http://127.0.0.1:8870/. Gói cục bộ tạo trong `releases/`, gồm MO-DEMO.html và thư mục web có manifest/hash. **7.265 kiểm tra đạt**, gồm7.155màn LCD đã quan sát trên đúng PLUS; 14kiểm bridge mới không phải quan sát máy thật. Số kiểm không phải tỷ lệ hoàn thành toàn bộ máy.
 
-Bộ kiểm hiện có **6.689 ca đạt**, gồm **6.635 màn LCD** qua thao tác phím với kỳ vọng quan sát từ đúng mẫu PLUS trên ClassPad. Đây là số bằng chứng kiểm, không phải tỷ lệ giống toàn bộ máy. Xem [phạm vi và ca còn chờ](docs/DEMO_SCOPE.md).
+[Phạm vi và ca còn chờ](docs/DEMO_SCOPE.md) · [Hướng dẫn kiểm tra](docs/TEAM_TESTING.md) · [Trạng thái](docs/PROJECT_STATUS.md).
 
-Bản công khai dùng trực tuyến; khả năng lưu ngoại tuyến trên hosting này còn cần kiểm riêng. Ảnh TIFF gốc, PDF, Word và hồ sơ bàn giao đầy đủ được giữ trong hồ sơ dự án, không nằm trong bản chụp nguồn này. Tài nguyên web, font và mẫu kiểm cần để chạy đã có sẵn.
-
-![Bản demo.2 sau khi sửa nét LCD](docs/qa/lcd-font-after.jpg)
+Khi báo lỗi, gửi mã bản, cài đặt, chuỗi phím, ảnh và JSON từ Nhật ký phím. Ghi rõ nguồn kỳ vọng từ máy vật lý, đúng PLUS trên ClassPad hoặc tài liệu. Hosting BITEX có adapter riêng trong `hosting/bitex/`; bản Netlify không tự nhận cấu hình GTM hay origin của bản hosting đó.

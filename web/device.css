@@ -99,3 +99,12 @@ main{display:flex;justify-content:center;align-items:center;min-height:100svh;pa
 .lcd-status{position:absolute;top:4.8%;left:2.55%;width:94.9%;aspect-ratio:16;pointer-events:none}
 .lcd-status-icon{position:absolute;background:var(--ink);mask-size:100% 100%;mask-repeat:no-repeat}
 @media(prefers-reduced-motion:reduce){.caret,.empty.active,.lcd-native-cursor{animation:none}}
+
+/* Cổng trao đổi dữ liệu (bridge.js): phím trang chứa nhờ tô sáng để hướng dẫn sửa lỗi thao tác. */
+.key.bitex-guide {
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #ffd43b, 0 0 14px 4px rgba(255, 212, 59, .85);
+  animation: bitex-guide-pulse 1.1s ease-in-out infinite;
+}
+@keyframes bitex-guide-pulse { 50% { box-shadow: 0 0 0 3px #ffd43b, 0 0 4px 1px rgba(255, 212, 59, .4); } }
+@media (prefers-reduced-motion: reduce) { .key.bitex-guide { animation: none; } }

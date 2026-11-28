@@ -4,9 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#222225">
-  <title>Giả lập fx-880BTG PLUS</title>
-  <link rel="icon" href="assets/home/1.png">
+  <title>fx-880BTG PLUS Emulator (Demo)</title>
+  <!-- Cổng trao đổi dữ liệu (bridge.js): các origin được phép đọc dữ liệu khi máy nằm trong khung, cách nhau bằng dấu cách. Để trống = tắt. -->
+  <meta name="bitex-export-origins" content="">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="880BTG PLUS">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Giả lập fx-880BTG PLUS của BITEX. Cài trên điện thoại, dùng ngoại tuyến và giữ cách bấm của máy thật.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <link rel="icon" href="assets/icon-192.png">
   <link rel="stylesheet" href="device.css">
+  <link rel="stylesheet" href="mobile.css">
   <script defer src="core/engine.js"></script>
   <script defer src="core/complex.js"></script>
   <script defer src="core/matrix.js"></script>
@@ -28,26 +37,39 @@
   <script defer src="assets/lcd-classpad-880.js"></script>
   <script defer src="lcd-pixels.js"></script>
   <script defer src="lcd.js"></script>
+  <script defer src="mobile.js"></script>
+  <script defer src="offline.js"></script>
+  <script defer src="assets/keylog-glyphs-880.js"></script>
+  <script defer src="keylog.js"></script>
+  <script defer src="bridge.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
-  <main>
-    <section class="device" aria-label="fx-880BTG PLUS">
+  <main class="app-shell">
+    <div class="device-stage" id="device-stage">
+    <section class="device" id="device" tabindex="-1" aria-label="fx-880BTG PLUS">
       <img class="face" id="face" src="assets/face-black.webp" alt="" draggable="false" fetchpriority="high">
       <span class="brand-cover" aria-hidden="true"></span>
       <div id="lcd" class="lcd" aria-label="Màn hình máy tính" aria-live="polite"></div>
+      <header class="app-toolbar"><button id="install-shortcut" type="button" aria-haspopup="dialog">Cài ứng dụng</button><button id="app-menu-button" type="button" aria-label="Mở tiện ích ứng dụng" aria-haspopup="dialog">⋯</button></header>
       <div id="keypad" class="keypad" role="group" aria-label="Bàn phím máy tính"></div>
     </section>
-    <aside class="utilities" aria-label="Tiện ích giả lập">
-      <fieldset class="colors">
+    </div>
+    <section class="keylog-panel" id="keylog-panel" hidden aria-labelledby="keylog-heading">
+      <div class="keylog-heading"><h2 id="keylog-heading">Nhật ký phím</h2><span id="keylog-count">0 phím</span><button id="keylog-close" type="button" aria-label="Đóng nhật ký phím">×</button></div>
+      <div class="keylog-preview" id="keylog-preview" role="region" tabindex="0" aria-label="Chuỗi phím"><p id="keylog-empty">Bấm phím trên máy tính để bắt đầu.</p><ol id="keylog-keys" role="list" aria-label="Các phím đã bấm" hidden></ol></div>
+      <div class="keylog-actions"><button class="utility-button" id="keylog-copy" type="button" title="Dán vào Word và đổi font sang CASIO ClassWiz CW01" disabled>Sao chép Word</button><button class="utility-button" id="keylog-copy-symbols" type="button" disabled>Sao chép ký hiệu</button><button class="utility-button" id="keylog-image" type="button" disabled>Tải ảnh PNG</button><button class="utility-button" id="keylog-download" type="button" disabled>Tải JSON</button><button class="utility-button" id="keylog-clear" type="button" aria-label="Xóa nhật ký" disabled>Xóa</button></div>
+      <p id="keylog-status" role="status"></p>
+    </section>
+  </main>
+<dialog id="utility-dialog" aria-label="Tiện ích ứng dụng"><section class="app-dialog" id="app-menu" hidden aria-labelledby="app-menu-heading"><div class="dialog-heading"><h2 id="app-menu-heading">Tiện ích</h2><button type="button" data-close-dialog aria-label="Đóng tiện ích">×</button></div><p class="menu-subtitle">fx-880BTG PLUS Emulator (Demo)</p><nav class="utility-list" aria-label="Tiện ích ứng dụng"><button class="utility-button" type="button" data-panel="guide-panel"><span aria-hidden="true">?</span>Hướng dẫn</button><button class="utility-button" type="button" data-panel="zoom-panel"><span aria-hidden="true">⌕</span>Phóng to màn hình LCD</button><button class="utility-button" type="button" data-panel="settings-panel"><span aria-hidden="true">☷</span>Tùy chỉnh máy</button><button class="utility-button" type="button" data-panel="install-dialog"><span aria-hidden="true">↓</span>Cài ứng dụng</button><button class="utility-button" type="button" id="keylog-button" aria-controls="keylog-panel" aria-expanded="false"><span aria-hidden="true">⌨</span>Nhật ký phím</button><button class="utility-button" type="button" data-panel="feedback-panel"><span aria-hidden="true">✎</span>Gửi góp ý và ảnh</button><button class="utility-button" id="fullscreen-button" type="button"><span aria-hidden="true">⛶</span><span id="fullscreen-label">Toàn màn hình</span></button><button class="utility-button" id="check-version" type="button"><span aria-hidden="true">↻</span>Kiểm tra cập nhật</button></nav><p id="offline-status" role="status">Đang kiểm tra dữ liệu ngoại tuyến…</p><p id="update-status" role="status"></p><button id="update-version" class="utility-button install-primary" type="button" hidden>Cập nhật và mở lại</button><p id="build-info" class="build-info"></p></section><section class="app-dialog" id="settings-panel" hidden aria-labelledby="settings-panel-heading"><div class="dialog-heading"><h2 id="settings-panel-heading">Tùy chỉnh máy</h2><button type="button" data-close-dialog aria-label="Đóng tùy chỉnh máy">×</button></div><div class="case-studio"><div class="case-preview"><div class="device"><img class="face" id="face-preview" src="assets/face-black.webp" alt="Xem trước màu vỏ"><span class="brand-cover" aria-hidden="true"></span></div></div><div><h3>Màu vỏ máy</h3><fieldset class="colors">
         <legend>Màu máy</legend>
         <label title="Đen"><input type="radio" name="face-color" value="black" aria-label="Đen" checked><span class="swatch black"></span></label>
         <label title="Hồng"><input type="radio" name="face-color" value="pink" aria-label="Hồng"><span class="swatch pink"></span></label>
         <label title="Trắng"><input type="radio" name="face-color" value="white" aria-label="Trắng"><span class="swatch white"></span></label>
         <label title="Xanh"><input type="radio" name="face-color" value="green" aria-label="Xanh"><span class="swatch green"></span></label>
-      </fieldset>
-      <details class="quick-help">
-        <summary>Phím tắt</summary>
+      </fieldset></div></div><label class="setting-row" for="key-highlight"><span><strong>Làm nổi phím vừa bấm</strong><small>Dễ theo dõi khi trình chiếu.</small></span><input type="checkbox" role="switch" id="key-highlight"></label><p class="app-help">Màu vỏ và cài đặt được giữ trên thiết bị này. Các phím trên máy và bàn phím PC luôn dùng chung cách tính.</p></section><section class="app-dialog" id="guide-panel" hidden aria-labelledby="guide-panel-heading"><div class="dialog-heading"><h2 id="guide-panel-heading">Bắt đầu sử dụng</h2><button type="button" data-close-dialog aria-label="Đóng bắt đầu sử dụng">×</button></div><p>Nhấn <b>HOME</b> để chọn ứng dụng, <b>EXE</b> để tính, <b>DEL</b> để xóa một ký tự và <b>AC</b> để trở lại màn nhập. <b>SHIFT</b> gọi chức năng màu vàng.</p>
+        
         <p>Bấm trực tiếp các phím trên máy hoặc dùng bàn phím máy tính.</p>
         <dl>
           <dt>Enter hoặc =</dt><dd>EXE · Tính / xác nhận</dd>
@@ -61,22 +83,18 @@
           <dt>d</dt><dd>FORMAT · Đổi dạng kết quả</dd>
         </dl>
         <p>Phím SHIFT chỉ tác động lên lần bấm kế tiếp. Nhấn HOME để chuyển nhóm tính năng.</p>
-      </details>
-      <details class="key-log">
-        <summary>Nhật ký phím</summary>
-        <p id="build-info" class="build-info"></p>
-        <p id="offline-status" class="build-info" role="status" hidden></p>
-        <button id="check-version" type="button" hidden>Kiểm tra bản mới</button>
-        <button id="update-version" type="button" hidden>Cập nhật và mở lại</button>
-        <ol id="log" aria-label="Phím đã bấm"></ol>
-        <div class="log-actions">
-          <button id="copy-log" type="button">Sao chép</button>
-          <button id="export-log" type="button">Tải JSON</button>
-          <button id="clear-log" type="button">Xóa</button>
-        </div>
-        <p id="log-status" role="status"></p>
-      </details>
-    </aside>
-  </main>
+      <button class="utility-button install-primary" data-panel="install-dialog" type="button">Cài để dùng khi mất mạng</button></section><section class="app-dialog" id="zoom-panel" hidden aria-labelledby="zoom-panel-heading"><div class="dialog-heading"><h2 id="zoom-panel-heading">Màn hình LCD</h2><button type="button" data-close-dialog aria-label="Đóng màn hình lcd">×</button></div><div id="zoom-viewport"><div id="zoom-device" class="zoom-device"></div></div><label class="zoom-control">Độ phóng đại<input id="lcd-zoom" type="range" min="1" max="2" step="0.25" value="1"><output id="lcd-zoom-value">100%</output></label><p class="app-help">Đóng cửa sổ này để tiếp tục bấm phím.</p></section><section class="app-dialog" id="feedback-panel" hidden aria-labelledby="feedback-panel-heading"><div class="dialog-heading"><h2 id="feedback-panel-heading">Góp ý cho BITEX</h2><button type="button" data-close-dialog aria-label="Đóng góp ý cho bitex">×</button></div><p class="app-help">Mô tả lỗi và chuỗi phím giúp BITEX kiểm tra lại. Chỉ gửi khi bạn bấm nút bên dưới.</p><form id="feedback-form" name="fx880-feedback" method="POST" action="/feedback-success.html" enctype="multipart/form-data" data-netlify="true" netlify-honeypot="bot-field"><input type="hidden" name="form-name" value="fx880-feedback"><input type="hidden" name="version" id="feedback-version"><p hidden><label>Để trống<input name="bot-field" tabindex="-1" autocomplete="off"></label></p><label class="feedback-field"><span class="feedback-label">Lỗi bạn gặp</span><textarea name="description" required maxlength="5000" rows="4"></textarea></label><label class="feedback-field"><span class="feedback-label">Kết quả mong đợi <small>(nếu có)</small></span><textarea name="expected" maxlength="3000" rows="2"></textarea></label><label class="feedback-field"><span class="feedback-label">Chuỗi phím vừa bấm</span><textarea name="keys" id="feedback-keys" readonly rows="3"></textarea></label><label class="feedback-field"><span class="feedback-label">Ảnh chụp <small>(không bắt buộc, tối đa 5 MB)</small></span><input name="image" id="feedback-image" type="file" accept="image/png,image/jpeg,image/webp"></label><p class="feedback-privacy">Phép tính chạy trên thiết bị, không gửi tự động. Nội dung góp ý, chuỗi phím và ảnh bạn chọn chỉ được gửi cho BITEX qua Netlify khi xác nhận gửi.</p><button class="feedback-submit" type="submit">Gửi góp ý cho BITEX</button><p id="feedback-status" role="status"></p></form></section>  <section class="app-dialog" id="install-dialog" hidden aria-labelledby="install-heading">
+    <div class="dialog-heading"><div><p class="dialog-eyebrow">LUÔN SẴN TRONG THIẾT BỊ</p><h2 id="install-heading">Cài máy tính của bạn</h2></div><button type="button" data-close-dialog aria-label="Đóng hướng dẫn cài">×</button></div>
+    <p class="install-intro">Mở từ một biểu tượng. Tính toán cả khi mất mạng.</p>
+    <p id="install-complete" class="install-notice" hidden>Máy tính đã được cài hoặc đang mở từ biểu tượng ứng dụng. Có thể xem hướng dẫn cho thiết bị khác bên dưới.</p>
+    <div class="install-platforms" role="group" aria-label="Chọn thiết bị để xem hướng dẫn"><button type="button" data-install-platform="ios" aria-pressed="false">iPhone / iPad</button><button type="button" data-install-platform="android" aria-pressed="false">Android</button><button type="button" data-install-platform="desktop" aria-pressed="false">Máy tính</button></div>
+    <div id="install-instructions"><section id="install-ios" hidden><ol class="visual-steps"><li><div class="install-step-copy"><span class="step-index">01</span><h3>Mở bằng Safari</h3><p>Sao chép đường dẫn trang này và mở trong Safari. Không cài từ trình duyệt bên trong Zalo hay Facebook.</p></div><div class="step-art" aria-hidden="true"><div class="browser-symbol"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path class="compass-north" d="m32 12-5 16-11 8 5-16z"/><path d="m16 36 11-8-6-8z"/></svg><b>Safari</b></div></div></li><li><div class="install-step-copy"><span class="step-index">02</span><h3>Chọn Chia sẻ</h3><p>Bấm biểu tượng Chia sẻ, rồi chọn <b>Thêm vào Màn hình chính</b>. Có thể cần mở nút ⋯ hoặc cuộn danh sách để thấy mục này.</p></div><div class="step-art" aria-hidden="true"><div class="share-demo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9H4v12h16V9h-4M12 16V2m-4 4 4-4 4 4"/></svg><span>Chia sẻ</span></div><div class="mini-menu-row"><b>⊞</b> Thêm vào Màn hình chính</div></div></li><li><div class="install-step-copy"><span class="step-index">03</span><h3>Thêm và mở ứng dụng</h3><p>Bật <b>Mở dưới dạng ứng dụng web</b> nếu có, rồi bấm <b>Thêm</b>. Trở về màn hình chính và mở biểu tượng 880BTG PLUS.</p></div><div class="step-art" aria-hidden="true"><div class="home-demo"><img src="assets/icon-180.png" width="44" height="44" alt="" /><span>880BTG PLUS</span></div></div></li></ol></section><section id="install-android" hidden><ol class="visual-steps"><li><div class="install-step-copy"><span class="step-index">01</span><h3>Mở bằng Chrome</h3><p>Mở đường dẫn máy tính trong Chrome. Sau đó bấm nút <b>⋮</b> cạnh thanh địa chỉ.</p></div><div class="step-art" aria-hidden="true"><div class="mini-browser"><span>880BTG PLUS</span><b>⋮</b></div><span class="art-caption">Menu của Chrome</span></div></li><li><div class="install-step-copy"><span class="step-index">02</span><h3>Chọn mục cài ứng dụng</h3><p>Chọn <b>Cài đặt và tạo lối tắt → Cài đặt</b>. Một số phiên bản ghi <b>Thêm vào màn hình chính</b>.</p></div><div class="step-art" aria-hidden="true"><div class="mini-menu-row">Cài đặt và tạo lối tắt</div><div class="mini-menu-row selected">↓ Cài đặt</div></div></li><li><div class="install-step-copy"><span class="step-index">03</span><h3>Xác nhận Cài đặt</h3><p>Làm theo cửa sổ xác nhận. Sau đó mở 880BTG PLUS từ màn hình chính hoặc danh sách ứng dụng.</p></div><div class="step-art" aria-hidden="true"><div class="home-demo"><img src="assets/icon-180.png" width="44" height="44" alt="" /><span>880BTG PLUS</span></div></div></li></ol></section><section id="install-desktop" hidden><ol class="visual-steps"><li><div class="install-step-copy"><span class="step-index">01</span><h3>Mở bằng Chrome hoặc Edge</h3><p>Dùng được trên Windows và macOS. Giữ kết nối mạng trong lần mở đầu tiên.</p></div><div class="step-art" aria-hidden="true"><div class="mini-browser desktop-browser"><span>880BTG PLUS</span><b>↓</b></div><span class="art-caption">Biểu tượng cài trên thanh địa chỉ</span></div></li><li><div class="install-step-copy"><span class="step-index">02</span><h3>Bấm Cài ngay</h3><p>Bấm nút bên dưới và xác nhận khi trình duyệt hỏi. Nếu chưa hiện cửa sổ, dùng mục cài ứng dụng trong menu trình duyệt.</p></div><div class="step-art" aria-hidden="true"><div class="mini-install">880BTG PLUS<strong>↓ Cài đặt</strong></div></div></li><li><div class="install-step-copy"><span class="step-index">03</span><h3>Mở như một ứng dụng</h3><p>Mở biểu tượng 880BTG PLUS. Máy tính chạy trong cửa sổ riêng; dùng bàn phím PC để nhập số và phép tính.</p></div><div class="step-art" aria-hidden="true"><div class="home-demo"><img src="assets/icon-180.png" width="44" height="44" alt="" /><span>880BTG PLUS</span></div></div></li></ol><details class="install-alternative"><summary>Dùng Safari trên máy Mac?</summary><p>Trong Safari, chọn <b>Tệp → Thêm vào Dock</b>, rồi xác nhận <b>Thêm</b> (macOS Sonoma trở lên).</p></details></section></div>
+    <p class="illustration-note">Hình minh họa thao tác; vị trí và tên nút có thể khác theo phiên bản trình duyệt.</p>
+    <button class="utility-button install-primary" id="install-now" type="button">Cài ngay</button><p id="install-prompt-status" class="app-help" role="status"></p>
+    <div class="install-offline-check"><span class="offline-symbol" aria-hidden="true">✓</span><div><strong>Kiểm tra trước khi tắt mạng</strong><p>Mở từ biểu tượng vừa cài khi còn mạng. Chờ thông báo sẵn sàng bên dưới, rồi tắt mạng và thử <b>7 × 8 = 56</b>.</p><p id="install-offline-status" role="status" aria-live="polite">Đang kiểm tra dữ liệu ngoại tuyến…</p></div></div>
+    <details class="install-link"><summary>Sao chép đường dẫn để mở đúng trình duyệt</summary><label for="install-url">Đường dẫn máy tính</label><input id="install-url" type="url" readonly /><button class="utility-button" id="install-copy-link" type="button">Sao chép đường dẫn</button><p id="install-copy-status" role="status"></p></details>
+    <p class="app-help guide-note">Gửi góp ý và ảnh cần có mạng. Nếu thiết bị đã xóa dữ liệu ứng dụng, hãy mở lại khi có mạng để tải đủ chương trình.</p>
+  </section>
+</dialog>
 </body>
 </html>

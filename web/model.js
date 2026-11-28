@@ -1,7 +1,7 @@
 'use strict';
 
 const MODEL = 'fx-880BTG PLUS';
-const VERSION = '0.7.0-demo.2';
+const VERSION = '0.7.0-demo.19';
 
 // A portable demo can embed the same assets; hosted builds use normal URLs.
 function assetURL880(path) {

@@ -283,7 +283,16 @@ function evaluateComplexExpression(expr, ansValue, angleUnit, variables, numberF
     if (type === 'SQRT') {
       advance();
       const arg = parseFunctionArgument(), value = requireReal(arg);
-      if (value < 0) throw new EngineError('Math ERROR');
+      if (value < 0) {
+        if (!plusModel) throw new EngineError('Math ERROR');
+        // PLUS accepts negative real radicands in Complex, while nonreal
+        // arguments still fail requireReal. Keep the exact imaginary surd.
+        return exact(complexNumber(0,Math.sqrt(-value)),() => {
+          const part=arg.algebraic.re;
+          if (part.radicand !== 1n) return null;
+          return {re:rational(0),im:surdSqrtFraction({num:-part.rational.num,den:part.rational.den},true)};
+        });
+      }
       return exact(complexNumber(Math.sqrt(value),0),() => {
         const part=arg.algebraic.re;
         if (part.radicand !== 1n) return null;
@@ -501,7 +510,15 @@ function simpleComplexRadical(value) {
   return sign + coefficient + '√' + numeratorPart.inside + denominator;
 }
 
-function complexRectangularParts(value, numberFormat, exactComponents, roundedComponents, preserveSmall = false, decimalOnly = false, plusModel = false) {
+function complexAlgebraicRadicalText(part, absolute = false) {
+  if (!part || part.rational.num !== 0n || part.radicand === 1n || part.extra || !surdFitsPlusRange(part)) return null;
+  const numerator = bigAbs(part.coeff.num);
+  if (numerator === 0n) return null;
+  return (!absolute && part.coeff.num < 0n ? '−' : '') + (numerator === 1n ? '' : String(numerator)) +
+    '√' + part.radicand + (part.coeff.den === 1n ? '' : '/' + part.coeff.den);
+}
+
+function complexRectangularParts(value, numberFormat, exactComponents, roundedComponents, preserveSmall = false, decimalOnly = false, plusModel = false, algebraicComponents = null) {
   const normalized = normalizeComplex(value,preserveSmall);
   const re = normalized.re;
   const im = normalized.im;
@@ -514,13 +531,17 @@ function complexRectangularParts(value, numberFormat, exactComponents, roundedCo
   } : exactComponents ? complexExactDisplayNumber : complexDisplayNumber;
   const displayNumber=(component,format)=>preserveSmall && component!==0 && Math.abs(component)<1e-12
     ? formatNumber(component,format).replace(/^-/, '−') : normalDisplay(component,format);
-  if (im === 0) return {left:displayNumber(re, numberFormat), separator:'', right:''};
+  // Exact parser components retain rationalized roots such as √2/2.
+  // Decimal literals are never guessed to be radicals from their float.
+  const displayPart = (component,key) => (plusModel && exactComponents && !decimalOnly
+    ? complexAlgebraicRadicalText(algebraicComponents?.[key],key === 'im') : null) ?? displayNumber(component,numberFormat);
+  if (im === 0) return {left:displayPart(re,'re'), separator:'', right:''};
 
-  const coefficientText = displayNumber(Math.abs(im), numberFormat);
+  const coefficientText = displayPart(Math.abs(im),'im');
   const unit = plusModel ? coefficientText === '1' : Math.abs(im) === 1;
   const coefficient = unit ? '' : coefficientText;
   const imaginary = coefficient + 'i';
-  return {left:re === 0 ? '' : displayNumber(re, numberFormat),
+  return {left:re === 0 ? '' : displayPart(re,'re'),
     separator:im < 0 ? '−' : re === 0 ? '' : '+', right:imaginary};
 }
 

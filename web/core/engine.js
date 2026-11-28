@@ -1292,10 +1292,10 @@ function tokenize(expr) {
     }
 
     if (ch === ',') { tokens.push({ type: 'COMMA' }); i++; continue; }
-    if (ch === '+') { tokens.push({ type: 'PLUS' }); i++; continue; }
-    if (ch === '-') { tokens.push({ type: 'MINUS' }); i++; continue; }
-    if (ch === '×') { tokens.push({ type: 'MUL' }); i++; continue; }
-    if (ch === '÷') { tokens.push({ type: 'DIV' }); i++; continue; }
+    if (ch === '+') { tokens.push({ type: 'PLUS', start:i }); i++; continue; }
+    if (ch === '-') { tokens.push({ type: 'MINUS', start:i }); i++; continue; }
+    if (ch === '×') { tokens.push({ type: 'MUL', start:i }); i++; continue; }
+    if (ch === '÷') { tokens.push({ type: 'DIV', start:i }); i++; continue; }
     if (ch === '┘') { tokens.push({ type: 'LINEFRAC' }); i++; continue; }
     if (ch === '(') { tokens.push({ type: 'LPAREN' }); i++; continue; }
     if (ch === ')') { tokens.push({ type: 'RPAREN' }); i++; continue; }
@@ -1392,13 +1392,13 @@ function integerPairNumber(kind, a, b, plusModel = false) {
   }
   return Number(integerPairBigInt(kind, BigInt(a), BigInt(b)));
 }
-function parseIntegerPairArguments(peek, advance, parseExpression) {
+function parseIntegerPairArguments(peek, advance, parseExpression, pendingValue = evaluate => evaluate()) {
   if (peek() !== 'LPAREN') throw new EngineError('Syntax ERROR');
   advance();
   const first = parseExpression();
   if (peek() !== 'COMMA') throw new EngineError('Syntax ERROR');
   advance();
-  const second = parseExpression();
+  const second = pendingValue(parseExpression);
   if (peek() !== 'RPAREN') throw new EngineError('Syntax ERROR');
   advance();
   return [first, second];
@@ -1632,13 +1632,23 @@ function evaluateExpression(expr, ansValue, variables, angleUnit, minimumMagnitu
     if (!domainContext?.plusModel) return evaluate();
     // PLUS has ten saved numeric values, in addition to the current value.
     // Eleven nested operands succeed; the twelfth raises Stack ERROR.
-    if (pendingValues >= 10) throw new EngineError('Stack ERROR');
+    if (pendingValues >= 10) {
+      const error = new EngineError('Stack ERROR');
+      error.stackOperator = tokens[pos - 1]?.start;
+      throw error;
+    }
     pendingValues++;
     try { return evaluate(); }
     finally { pendingValues--; }
   };
   const withPendingOperators = (count, evaluate) => {
-    if (pendingOperators + count > 24) throw new EngineError('Stack ERROR');
+    if (pendingOperators + count > 24) {
+      const error = new EngineError('Stack ERROR');
+      // Prefix signs are scanned as a batch. Point at the first sign
+      // beyond the remaining capacity, even if more signs follow it.
+      error.stackOperator = tokens[pos - count + Math.max(0,24-pendingOperators)]?.start;
+      throw error;
+    }
     pendingOperators += count;
     try { return evaluate(); }
     finally { pendingOperators -= count; }
@@ -1708,16 +1718,21 @@ function evaluateExpression(expr, ansValue, variables, angleUnit, minimumMagnitu
   // 2026-08-20: bấm `√ 9 + 7 =` trên bản giả lập, máy hiện √(9+7) và cho 4,
   // tức dấu + gõ sau vẫn nằm TRONG dấu căn chứ không thoát ra ngoài.
   function parseFunctionArgument() {
-    if (peek() !== 'LPAREN') {
-      throw new EngineError('Syntax ERROR');
-    }
-    advance();
-    const value = parseExpression();
-    if (peek() !== 'RPAREN') {
-      throw new EngineError('Syntax ERROR');
-    }
-    advance();
-    return value;
+    const evaluate = () => {
+      if (peek() !== 'LPAREN') {
+        throw new EngineError('Syntax ERROR');
+      }
+      advance();
+      const value = parseExpression();
+      if (peek() !== 'RPAREN') {
+        throw new EngineError('Syntax ERROR');
+      }
+      advance();
+      return value;
+    };
+    // PLUS keeps the function pending while its argument is evaluated:
+    // one function plus23 unary signs fits; the24th sign overflows.
+    return domainContext?.plusModel ? withPendingOperators(1, evaluate) : evaluate();
   }
 
   function parseAtom() {
@@ -1998,7 +2013,7 @@ function evaluateExpression(expr, ansValue, variables, angleUnit, minimumMagnitu
     if (type === 'LOGBASE') {
       advance();
       const [base, argument] = logarithmArguments(() =>
-        parseIntegerPairArguments(peek, advance, parseExpression));
+        parseIntegerPairArguments(peek, advance, parseExpression, withPendingValue));
       return calculationLogarithm(argument, base);
     }
     if (type === 'LOG' || type === 'LN') {
@@ -3800,6 +3815,7 @@ const TEMPLATE_SLOT_FIELDS = {
   sup: ['exp'],
   pow10: ['exp'],
   times10: ['exp'],
+  scientific: ['mantissa', 'exp'],
   epow: ['exp'],
   nthroot: ['idx', 'arg'],
   // log cơ số bất kỳ: ô cơ số (chỉ số dưới) rồi ô đối trong ngoặc. Con trỏ
@@ -3843,6 +3859,10 @@ function fractionCursorLayout(list) {
     if(node.type==='sqrt') {
       child=fractionCursorLayout(node.arg);if(!child)return null;
       size=1+child.width;
+    } else if(node.type==='sup' && node.exp.length===1 && node.exp[0].type==='char') {
+      // A one-character script occupies one navigation column. Vertical
+      // fraction movement lands before it; RIGHT enters its exponent.
+      size=1;
     } else if(node.type!=='char')return null;
     entries.push({index,left:width,width:size,child});width+=size;
   }
@@ -3880,6 +3900,41 @@ function expressionNodePosition(nodes, target) {
     }
   }
   return null;
+}
+
+// Translate a parser offset back to an editable MathI slot. Only templates
+// whose emitted spelling is accounted for below participate; generated
+// literals and reduced calculus keep their existing diagnostic mapping.
+function stackSourcePosition880(nodes, sourceIndex) {
+  const supported = list => list.every(node => node.type === 'char'
+    ? serializeForEval([node]).length === 1 && !node.constant && !node.eng
+    : ['frac','sqrt','abs','logn','sup'].includes(node.type) && templateSlots(node).every(supported));
+  if (!supported(nodes)) return null;
+  const locate = (list, position) => {
+    let start = 0;
+    for (let index = 0; index < list.length; index++) {
+      const node = list[index], text = serializeForEval([node]);
+      if (position >= start && position < start + text.length) {
+        const local = position - start;
+        if (node.type === 'char') return /^[+−×÷-]$/.test(node.ch) ? {list,index} : null;
+        const children = node.type === 'frac'
+          ? [[node.num,2],[node.den,5 + serializeForEval(node.num).length]]
+          : node.type === 'logn'
+            ? [[node.base,8],[node.arg,9 + serializeForEval(node.base).length]]
+            : node.type === 'sup'
+              ? [[node.exp,2]]
+              : [[node.arg,node.type === 'abs' ? 4 : 2]];
+        for (const [child, offset] of children) {
+          if (local >= offset && local < offset + serializeForEval(child).length)
+            return locate(child, local - offset);
+        }
+        return null;
+      }
+      start += text.length;
+    }
+    return null;
+  };
+  return locate(nodes, sourceIndex);
 }
 
 // Locate the right operand in the original editable tree, including MathI
@@ -3956,6 +4011,9 @@ function clarifyImplicitDivisors880(input, baseMode = false) {
       }
     }
     const copy = {...item};
+    // PLUS displays an evaluated scientific literal as an explicit group;
+    // the live number editor omits these parentheses. Replay retains them.
+    if (item.type === 'scientific' && item.mantissa.length) copy.parenthesized = true;
     for (const field of TEMPLATE_SLOT_FIELDS[item.type] || []) copy[field] = clarifyImplicitDivisors880(item[field], baseMode);
     nodes.push(copy);
   }
@@ -4098,7 +4156,20 @@ function serializeForEval(nodes) {
       // "510^(...)" — bộ tách token gộp mọi chữ số liền nhau thành MỘT số.
       // Dấu ngoặc chặn việc dính này mà không đổi giá trị tính ra.
       case 'pow10': return '(10)^(' + serializeForEval(node.exp) + ')';
-      case 'scientific': return '('+serializeForEval(node.mantissa)+'×(10)^('+serializeForEval(node.exp)+'))';
+      case 'scientific': {
+        // The PLUS notation field accepts typing a third digit but reports
+        // Syntax ERROR on EXE, including099. Power expressions and580 keep
+        // their numeric overflow rules.
+        const exponentDigits = node.exp.filter(n => /^\d$/.test(n.ch || ''));
+        if (node.notation && exponentDigits.length > 2) {
+          const error = new EngineError('Syntax ERROR');
+          error.expressionNode = exponentDigits[2];
+          throw error;
+        }
+        return node.mantissa.length
+          ? '('+serializeForEval(node.mantissa)+'×(10)^('+serializeForEval(node.exp)+'))'
+          : '×(10)^('+serializeForEval(node.exp)+')';
+      }
       case 'times10': return '×(10)^(' + serializeForEval(node.exp) + ')';
       case 'epow': return 'e^(' + serializeForEval(node.exp) + ')';
       // ˣ√y = y^(1/x). Viết dạng luỹ thừa để tái dùng bộ tính toán sẵn có
@@ -4141,6 +4212,186 @@ function serializeForEval(nodes) {
   }).join('');
 }
 
+// ===== Cổng trao đổi dữ liệu (bridge.js, docs/CONG-TRAO-DOI-DU-LIEU.md) =====
+// Chuyển từ emulator580 (commit 4060792) để trang chứa dùng chung một giao thức cho hai model.
+// Chuỗi trao đổi ASCII: + - * / ^ ( ) , x e pi sqrt cbrt root abs ln log10 logb sin… asinh…; không dịch được thì null.
+// Gom ×10ˣ với phần số liền trước thành một số khoa học, như serializeForEval
+// (1÷2×10³ = 1/2000). Số thập phân tuần hoàn chưa có cú pháp trao đổi: báo không xuất được.
+function groupExchangeNodes(nodes) {
+  const grouped = [];
+  for (const node of nodes) {
+    if (node.type === 'recurring') throw new EngineError('exchange');
+    if (node.type === 'times10' && !node.literalMultiply) {
+      const mantissa = [];
+      while (grouped.length) {
+        const previous = grouped[grouped.length - 1];
+        if (previous.type !== 'char' || previous.constant || !/^[0-9.]$/.test(previous.ch)) break;
+        mantissa.unshift(grouped.pop());
+      }
+      if (mantissa.length) { grouped.push({ type: 'scientific', mantissa, exp: node.exp }); continue; }
+    }
+    grouped.push(node);
+  }
+  return grouped;
+}
+
+const EXCHANGE_FUNCS = [
+  ['sinh⁻¹(', 'asinh('], ['cosh⁻¹(', 'acosh('], ['tanh⁻¹(', 'atanh('],
+  ['sin⁻¹(', 'asin('], ['cos⁻¹(', 'acos('], ['tan⁻¹(', 'atan('],
+  ['sinh(', 'sinh('], ['cosh(', 'cosh('], ['tanh(', 'tanh('],
+  ['sin(', 'sin('], ['cos(', 'cos('], ['tan(', 'tan('],
+  ['log(', 'log10('], ['ln(', 'ln('], ['Abs(', 'abs('], ['√(', 'sqrt(']
+];
+const EXCHANGE_CHARS = { '×': '*', '÷': '/', '−': '-', 'π': 'pi' };
+function exchangeSource(nodes) {
+  if (!nodes.length) throw new EngineError('exchange');
+  let text = '';
+  for (const node of groupExchangeNodes(nodes)) {
+    switch (node.type) {
+      case 'frac': text += '((' + exchangeSource(node.num) + ')/(' + exchangeSource(node.den) + '))'; break;
+      case 'sqrt': text += 'sqrt(' + exchangeSource(node.arg) + ')'; break;
+      case 'cbrt': text += 'cbrt(' + exchangeSource(node.arg) + ')'; break;
+      case 'abs': text += 'abs(' + exchangeSource(node.arg) + ')'; break;
+      case 'sup': text += '^(' + exchangeSource(node.exp) + ')'; break;
+      case 'pow10': text += '(10)^(' + exchangeSource(node.exp) + ')'; break;
+      case 'scientific': text += '(' + exchangeSource(node.mantissa) + '*10^(' + exchangeSource(node.exp) + '))'; break;
+      case 'times10': text += '*10^(' + exchangeSource(node.exp) + ')'; break;
+      case 'epow': text += 'e^(' + exchangeSource(node.exp) + ')'; break;
+      case 'nthroot': text += 'root(' + exchangeSource(node.arg) + ',' + exchangeSource(node.idx) + ')'; break;
+      case 'logn': text += 'logb(' + exchangeSource(node.base) + ',' + exchangeSource(node.arg) + ')'; break;
+      case 'mixed': text += '(' + exchangeSource(node.int) + '+(' + exchangeSource(node.num) + ')/(' + exchangeSource(node.den) + '))'; break;
+      case 'char':
+        if (node.constant || node.stat || node.eng || node.conversion || node.combinatoric || node.complexOutput) {
+          throw new EngineError('exchange');
+        }
+        text += EXCHANGE_CHARS[node.ch] || node.ch;
+        break;
+      default: throw new EngineError('exchange');
+    }
+  }
+  return text;
+}
+
+// Chỉ chuẩn hóa tập cú pháp đã công bố. Nhân ẩn chặt hơn ×/÷ trên máy,
+// nên ghi rõ dấu nhân và ngoặc: 1÷2π xuất thành 1/(2*pi).
+function normalizeExchangeExpression(text) {
+  const lexeme = /(?:\d+(?:\.\d*)?|\.\d+|log10|logb|sqrt|cbrt|root|abs|ln|a?(?:sin|cos|tan)h?|pi|x|e|⁻¹|[²³+*/^(),-])/gy;
+  const tokens = [];
+  for (let offset = 0; offset < text.length;) {
+    const match = lexeme.exec(text);
+    if (!match) throw new EngineError('exchange');
+    tokens.push(match[0]);
+    offset = lexeme.lastIndex;
+  }
+  let i = 0;
+  const take = token => {
+    if (tokens[i] !== token) return false;
+    i++;
+    return true;
+  };
+  const expect = token => {
+    if (!take(token)) throw new EngineError('exchange');
+  };
+  const startsAtom = () => /^(?:[a-z]|[0-9.]|\()/.test(tokens[i] || '');
+  const suffixes = { '²': '2', '³': '3', '⁻¹': '(-1)' };
+  function atom() {
+    if (take('(')) {
+      const value = sum();
+      expect(')');
+      return '(' + value + ')';
+    }
+    if (!startsAtom()) throw new EngineError('exchange');
+    const token = tokens[i++];
+    if (!/^[a-z]/.test(token) || ['x', 'e', 'pi'].includes(token)) return token;
+    expect('(');
+    const first = sum();
+    let args = first;
+    if (token === 'logb' || token === 'root') {
+      expect(',');
+      args += ',' + sum();
+    }
+    expect(')');
+    return token + '(' + args + ')';
+  }
+  function power() {
+    let value = atom();
+    while (Object.hasOwn(suffixes, tokens[i])) {
+      const exponent = suffixes[tokens[i++]];
+      value = '(' + value + '^' + exponent + ')';
+    }
+    return take('^') ? value + '^' + power() : value;
+  }
+  function signedFactor() {
+    let sign = '';
+    while (tokens[i] === '+' || tokens[i] === '-') sign += tokens[i++];
+    const factors = [power()];
+    while (startsAtom()) factors.push(power());
+    return sign + (factors.length === 1 ? factors[0] : '(' + factors.join('*') + ')');
+  }
+  function product() {
+    let value = signedFactor();
+    while (tokens[i] === '*' || tokens[i] === '/') {
+      const operator = tokens[i++];
+      value += operator + signedFactor();
+    }
+    return value;
+  }
+  function sum() {
+    let value = product();
+    while (tokens[i] === '+' || tokens[i] === '-') {
+      const operator = tokens[i++];
+      value += operator + product();
+    }
+    return value;
+  }
+  const expression = sum();
+  if (i !== tokens.length) throw new EngineError('exchange');
+  return expression;
+}
+
+// Cổng xuất dữ liệu: cây biểu thức gọn cho trang chứa (bridge.js). Ký tự là
+// { c, neg?, k? (hằng), s? (biến thống kê), e? (ký hiệu kỹ thuật) }; mẫu nhập
+// là { t: loại, <ô>: [...] } theo TEMPLATE_SLOT_FIELDS.
+function exportExpressionTree(nodes) {
+  return (nodes || []).map((node) => {
+    const fields = TEMPLATE_SLOT_FIELDS[node.type];
+    const out = node.type === 'char' ? { c: node.ch } : { t: node.type };
+    if (node.type === 'char') {
+      if (node.negative) out.neg = 1;
+      if (node.constant) out.k = 1;
+      if (node.stat) out.s = 1;
+      if (node.eng) out.e = 1;
+    }
+    if (fields) fields.forEach((field) => { out[field] = exportExpressionTree(node[field]); });
+    return out;
+  });
+}
+
+// Đường dẫn tới node trong cây: [chỉ số, tên ô, chỉ số, …]; null nếu không thấy.
+function expressionNodePath(nodes, target) {
+  for (let index = 0; index < nodes.length; index++) {
+    if (nodes[index] === target) return [index];
+    for (const field of TEMPLATE_SLOT_FIELDS[nodes[index].type] || []) {
+      const found = expressionNodePath(nodes[index][field] || [], target);
+      if (found) return [index, field, ...found];
+    }
+  }
+  return null;
+}
+
+function serializeForExchange(nodes) {
+  try {
+    let text = exchangeSource(nodes);
+    for (const [from, to] of EXCHANGE_FUNCS) text = text.split(from).join(to);
+    // Giữ kiểm tra dấu âm một ngôi giống máy, cả khi bản nháp chưa được tính.
+    serializeForEval(nodes);
+    return normalizeExchangeExpression(autoCloseParens(text));
+  } catch (error) {
+    if (error instanceof EngineError) return null;
+    throw error;
+  }
+}
+
 // Dịch cây thành chuỗi một dòng để HIỂN THỊ dạng văn bản (getDisplay và
 // getState().buffer) — giữ cho phần đã có từ Tầng 0-4 hoạt động y như cũ.
 function serializeForDisplay(nodes) {
@@ -4154,6 +4405,8 @@ function serializeForDisplay(nodes) {
       case 'sup': return '^(' + serializeForDisplay(node.exp) + ')';
       case 'pow10': return '10^(' + serializeForDisplay(node.exp) + ')';
       case 'times10': return '×10^(' + serializeForDisplay(node.exp) + ')';
+      case 'scientific': return (node.mantissa.length ? '(' + serializeForDisplay(node.mantissa) : '') +
+        '×10^(' + serializeForDisplay(node.exp) + ')' + (node.mantissa.length ? ')' : '');
       case 'epow': return 'e^(' + serializeForDisplay(node.exp) + ')';
       case 'nthroot': return serializeForDisplay(node.idx) + '√(' + serializeForDisplay(node.arg) + ')';
       case 'logn': return 'log' + serializeForDisplay(node.base) + '(' + serializeForDisplay(node.arg) + ')';
@@ -7030,6 +7283,11 @@ function createEngine(options = {}) {
     // Ràng buộc duy nhất còn lại: đang hiện nghiệm thì không nhận phím (xem
     // handlerIsEditing bên dưới).
     if (modeHandler && !handlerIsEditing()) return;
+    // PLUS Scientific Notation has a digit/sign exponent editor, rather
+    // than the expression slot used by ×10ˣ (Power). Observed 2026-11-23.
+    const owner = plusModel && findListOwner(root, cursorList);
+    if (owner && owner.node.type === 'scientific' && cursorList === owner.node.exp &&
+        !nodes.every(n => n.type === 'char' && (/^\d$/.test(n.ch) || n.negative && cursorIndex === 0))) return false;
     let replaced = 0;
     if (overwriteInput && linearEditorInput() && cursorIndex < cursorList.length) {
       replaced = 1;
@@ -7096,6 +7354,45 @@ function createEngine(options = {}) {
     return absorbed;
   }
 
+  // PLUS fraction entry wraps the whole adjacent implicit product, with
+  // each factor's postfix intact. Explicit binary operators delimit it.
+  function absorbFractionOperand880() {
+    const atomStart = end => {
+      let position = end;
+      while (position > 0) {
+        const node = cursorList[position - 1];
+        if (node.type === 'sup' || node.type === 'char' && ['²','³','⁻¹','!','%'].includes(node.ch)) position--;
+        else if (node.ch === '¹' && cursorList[position - 2]?.ch === '⁻') position -= 2;
+        else break;
+      }
+      if (position === 0) return -1;
+      const group = groupStartBefore(cursorList, position);
+      if (group >= 0) return group;
+      for (const token of ['PreAns','Ans']) {
+        const start = position - token.length;
+        if (start >= 0 && cursorList.slice(start, position).map(node => node.ch || '').join('') === token) return start;
+      }
+      const node = cursorList[position - 1];
+      if (node.type === 'char') {
+        return /^[0-9.πA-FMxyz]$/.test(node.ch) || node.constant || node.euler || node.imaginary || node.stat || node.eng
+          ? position - 1 : -1;
+      }
+      return TEMPLATE_SLOT_FIELDS[node.type] ? position - 1 : -1;
+    };
+    let start = cursorIndex;
+    while (start > 0) {
+      const previous = atomStart(start);
+      if (previous < 0) break;
+      start = previous;
+    }
+    const operand = cursorList.splice(start, cursorIndex - start);
+    cursorIndex = start;
+    // Captured x² becomes an editable exponent on PLUS. This also preserves
+    // its native fraction height; RIGHT can enter and edit the small2.
+    return operand.map(node => node.type === 'char' && node.ch === '²'
+      ? {type:'sup',exp:charNodes('2')} : node);
+  }
+
   // Hậu tố Angle Unit phải ôm trọn giá trị ngay trước nó. Quét tới toán tử
   // nhị phân gần nhất; nếu kết thúc bằng dấu ")" thì groupStartBefore() giữ
   // nguyên cả ngoặc/lời gọi hàm. Nhờ vậy node phân số π/2 được bọc làm một
@@ -7118,7 +7415,7 @@ function createEngine(options = {}) {
   // Chèn một node mẫu rồi đưa con trỏ vào VÙNG NHẬP ĐẦU TIÊN của nó, để gõ
   // tiếp là gõ vào bên trong mẫu (dưới vạch căn, trong ô mũ...).
   function insertTemplate(node) {
-    insertNodes([node]);
+    if (insertNodes([node]) === false) return serializeForDisplay(root);
     const slots = templateSlots(node);
     cursorList = slots[0];
     cursorIndex = 0;
@@ -7405,6 +7702,15 @@ function createEngine(options = {}) {
     } catch (e) {
       mode = 'error';
       errorMessage = e instanceof EngineError ? e.message : 'Math ERROR';
+      // PLUS Stack Goto selects the pending operation in its original
+      // editable slot. Do not interpret offsets from rewritten expressions.
+      if (plusModel && calcMode === 'calculate' && !usesLineInput() && Number.isInteger(e.stackOperator) &&
+          typeof sampledExpression === 'string' && !containsCalcNode(root) &&
+          sampledExpression === autoCloseParens(serializeForEval(root)) &&
+          !/(?:^|[^A-Za-z])[fg]\(/.test(sampledExpression)) {
+        const position = stackSourcePosition880(root, e.stackOperator);
+        if (position) ({list:cursorList,index:cursorIndex}=position);
+      }
       if (plusModel && e.implicitNumeric) {
         const position=implicitNumericPosition880(root);
         if (position) ({list:cursorList,index:cursorIndex}=position);
@@ -8145,7 +8451,7 @@ function createEngine(options = {}) {
 
   // Chuyển sang trạng thái hiển thị kết quả — dùng chung cho "=", STO và M±.
   function showResult(evalResult, recordHistory = true) {
-    if (calcMode === 'calculate') {
+    if (calcMode === 'calculate' || (plusModel && calcMode === 'verify')) {
       preAns = ans === null ? 0 : ans;
       variablesExact.PreAns = ansExact;
       variablesExactSurd.PreAns = ansExactSurd;
@@ -8636,6 +8942,59 @@ function createEngine(options = {}) {
     let presentation = null;
     let horizontalOffset = 0;
 
+    // PLUS Equation Verify keeps the coefficient editor while the user
+    // supplies a solution claim. It never writes the entered guesses to Ans.
+    let verify = false;
+    let verification = null;
+    const answerValue = value => typeof value === 'object' && value !== null
+      ? value : {re:value,im:0};
+    const verificationSurd=s=>s && (s.radicand===1n
+      ? {...s,rational:fracAdd(s.rational,s.coeff),coeff:ZERO_FRACTION} : surdNormalize(s));
+    const sameAnswer = (a,b) => {
+      a=answerValue(a); b=answerValue(b);
+      return ['re','im'].every(part=>verifyComparePlus880('=',
+        {value:a[part],surd:verificationSurd(a.algebraic?.[part])},
+        {value:b[part],surd:verificationSurd(b.algebraic?.[part])}));
+    };
+    function expectedAnswers(kind='input') {
+      if (solved?.kind !== 'roots') return [];
+      const roots=solved.roots.filter(root=>kind==='input' ? root.header===solved.roots[0].header
+        : root.header?.startsWith(kind==='minimum'?'Min of':'Max of'));
+      const scalar=root=>{
+        const surd=root.form==='fraction' ? surdFromFraction(root.fraction) : root.form==='surd' ? root.surd : null;
+        return {re:surd?surdToNumber(surd):root.value,im:0,...(surd?{algebraic:{re:surd,im:ZERO_SURD}}:{})};
+      };
+      return roots.map(root=>root.form==='complex'
+        ? {re:surdToNumber(root.re),im:surdToNumber(root.im),algebraic:{re:root.re,im:root.im}}
+        : root.form==='complexDecimal' ? {re:root.re,im:root.im} : scalar(root));
+    }
+    function checkEquationClaim(kind) {
+      let correct;
+      if (kind==='none' || kind==='infinite') correct=solved?.kind==='message' &&
+        (kind==='infinite' ? solved.message==='Infinite Solution'
+          : ['No Solution','No Real Roots'].includes(solved.message));
+      else {
+        const expected=expectedAnswers(kind);
+        const values=verification.values;
+        if(type.group==='poly' && kind==='input') {
+          const unique=expected.filter((value,index)=>!expected.slice(0,index).some(v=>sameAnswer(v,value)));
+          const unused=[...unique];
+          correct=values.length===unique.length && values.every(value=>{
+            const index=unused.findIndex(v=>value!==null && sameAnswer(v,value));
+            if(index<0)return false;
+            unused.splice(index,1);return true;
+          });
+        } else correct=values.length===expected.length && values.every((value,index)=>value!==null && sameAnswer(value,expected[index]));
+      }
+      verification={...verification,stage:'feedback',correct,cursor:0,kind};
+    }
+    function beginAnswerEntry(count,kind='input') {
+      verification={stage:'answers',kind,cursor:0,
+        names:type.group==='poly' && kind==='input' ? Array.from({length:count},(_,i)=>count===1?'x':'x'+['₁','₂','₃','₄'][i])
+          : type.group==='poly' ? ['x','y']
+          : SIMUL_UNKNOWN_NAMES.slice(0,type.columns-1),values:Array(count).fill(null)};
+    }
+
     // "Thay đổi kiểu phương trình làm cho các giá trị của mọi hệ số bị đổi
     // thành không" (manual trang 165) — khác Ratio (AC về 1), giống nhau ở
     // chỗ đổi kiểu thì về 0.
@@ -8645,13 +9004,16 @@ function createEngine(options = {}) {
       coefficientOffset = 0;
       solved = null;
       rootIndex = 0;
+      verification = null;
+      if(!['simul2','poly2'].includes(type.id)) verify=false;
     }
 
     function editing() {
-      return solved === null;
+      return verification ? verification.stage==='answers' && verification.cursor<verification.values.length : solved === null;
     }
 
     function backToEditor() {
+      verification = null;
       solved = null;
       rootIndex = 0;
       editor.selectFirst();
@@ -8704,8 +9066,34 @@ function createEngine(options = {}) {
     return {
       setType,
 
+      verifying() { return verify; },
+      verifyComplexInput() { return verification?.stage==='answers' && type.group==='poly' && equationComplexResults; },
+      verificationCommand(command) {
+        if(command==='toggle') { verify=!verify; backToEditor(); }
+        else if(command==='cancel') backToEditor();
+        // PLUS Back from an answer form skips the root-count selector.
+        else if(command==='back' && verification) verification={stage:'choice',cursor:0};
+        else if(command==='input') {
+          if(type.group==='poly') verification={stage:'count',cursor:0,degree:type.degree};
+          else beginAnswerEntry(type.columns-1);
+        } else if(command.startsWith('count:')) beginAnswerEntry(Number(command.slice(6)));
+        else if(command==='minimum' || command==='maximum') beginAnswerEntry(2,command);
+        else if(command==='none' || command==='infinite') checkEquationClaim(command);
+      },
+
       // Engine đã tính xong biểu thức trong ô và gọi vào đây để đăng ký.
-      commitValue(value, fraction) {
+      commitValue(value, fraction, detail) {
+        if(verification?.stage==='answers') {
+          const index=verification.cursor;
+          if(index<verification.values.length) {
+            const algebraic=detail?.complexAlgebraic ||
+              (fraction?{re:surdFromFraction(fraction),im:ZERO_SURD}
+                : detail?.exactSurd?{re:detail.exactSurd,im:ZERO_SURD}:null);
+            verification.values[index]={...answerValue(value),...(algebraic?{algebraic}:{})};
+            verification.cursor++;
+          }
+          return;
+        }
         if (editing()) {
           editor.commit(value,plusModel ? fraction : null);
           if (plusModel && type.braced && type.columns > 3) updateCoefficientOffset();
@@ -8717,6 +9105,7 @@ function createEngine(options = {}) {
       // phải bấm AC lần nữa ở màn hình nhập thì mới xoá hết về 0. Trước đây
       // một lần AC làm cả hai việc nên mất hệ số oan.
       clear() {
+        if(verification) { backToEditor(); return; }
         if (!editing()) {
           backToEditor();
           return;
@@ -8774,6 +9163,12 @@ function createEngine(options = {}) {
       // parabol ("Min of y=ax²+bx+c" với x= rồi y=) — cái này ta ĐÃ CÓ, và
       // ĐÃ CÓ cả dạng phân số (x=3/2, y=−1/4 với x²−3x+2).
       moveCursor(direction) {
+        if(verification) {
+          const last=verification.stage==='answers' ? verification.values.length
+            : verification.stage==='feedback' ? Number(verification.correct) : 0;
+          verification.cursor=Math.max(0,Math.min(last,verification.cursor+(direction==='down'?1:direction==='up'?-1:0)));
+          return;
+        }
         if (editing()) {
           editor.moveCell(direction);
           if (plusModel && type.braced && type.columns > 3) updateCoefficientOffset();
@@ -8816,6 +9211,20 @@ function createEngine(options = {}) {
       // Trong màn hình nghiệm: "=" sang nghiệm kế, "=" ở nghiệm cuối quay lại
       // bộ soạn thảo (manual trang 165).
       equals() {
+        if(verification) {
+          if(verification.stage==='answers') checkEquationClaim(verification.kind);
+          else if(verification.stage==='feedback') {
+            if(!verification.correct && verification.values) verification={...verification,stage:'answers',cursor:0};
+            else if(verification.correct && verification.cursor===1) {
+              const kind=verification.kind;
+              if(['minimum','maximum'].includes(kind)) rootIndex=Math.max(0,solved.roots.findIndex(root=>root.header?.startsWith(kind==='minimum'?'Min of':'Max of')));
+              verification=null;
+            }
+            else if(!verification.correct) verification={stage:'choice',cursor:verification.kind==='none'?1:2};
+            else backToEditor();
+          }
+          return;
+        }
         if (!editing()) {
           if (solved.kind !== 'roots' || rootIndex >= solved.roots.length - 1) {
             backToEditor();
@@ -8831,6 +9240,7 @@ function createEngine(options = {}) {
           }
           rootIndex = 0;
           resetResultFormat();
+          if(plusModel && verify) verification={stage:'choice',cursor:0};
         } catch (e) {
           solved = null;
           mode = 'error';
@@ -8838,7 +9248,49 @@ function createEngine(options = {}) {
         }
       },
 
+      // Cổng xuất dữ liệu (bridge.js): kiểu phương trình, hệ số đã đăng ký và,
+      // khi đang xem màn hình nghiệm, các nghiệm và cực trị dưới dạng số.
+      // Đa thức: coefficients = [a, b, c, ...] (bậc cao trước). Hệ n ẩn:
+      // coefficients = n hàng, mỗi hàng n hệ số rồi vế phải.
+      exportData() {
+        const num = v => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+        const toNum = r => {
+          if (r.form === 'fraction') return { re: num(fracToNumber(r.fraction)), im: 0 };
+          if (r.form === 'surd') return { re: num(surdToNumber(r.surd)), im: 0 };
+          if (r.form === 'decimal') return { re: num(r.value), im: 0 };
+          if (r.form === 'complex') return { re: num(surdToNumber(r.re)), im: num(surdToNumber(r.im)) };
+          if (r.form === 'complexDecimal') return { re: num(r.re), im: num(r.im) };
+          return null;
+        };
+        const values = editor.getValues().map(num);
+        const poly = type.group === 'poly';
+        const coefficients = poly ? values
+          : Array.from({ length: type.unknowns }, (_, i) => values.slice(i * type.columns, (i + 1) * type.columns));
+        const out = {
+          type: type.id, group: type.group,
+          degree: poly ? type.degree : null, unknowns: poly ? null : type.unknowns,
+          coefficients, solved: solved !== null, message: null, solutions: [], extrema: []
+        };
+        if (solved === null) return out;
+        if (solved.kind === 'message') { out.message = solved.message; return out; }
+        const first = solved.roots[0] && solved.roots[0].header;
+        solved.roots.forEach((r, i) => {
+          const isSolution = !poly || r.header === first;
+          if (isSolution) {
+            const v = toNum(r);
+            if (v) out.solutions.push({ label: r.label, re: v.re, im: v.im });
+          } else if (r.label === 'x' && /Max|Min/.test(r.header || '') && solved.roots[i + 1] && solved.roots[i + 1].label === 'y') {
+            const x = toNum(r), y = toNum(solved.roots[i + 1]);
+            if (x && y) out.extrema.push({ kind: /Max/.test(r.header) ? 'max' : 'min', x: x.re, y: y.re });
+          }
+        });
+        return out;
+      },
+
       getState() {
+        if(verification) return {mode:'equation-verify',typeId:type.id,complexResults:type.group==='poly' && equationComplexResults,
+          ...verification,degree:type.degree,values:verification.values?.map(value=>value===null ? ''
+            : typeof value==='object' ? formatComplexRect(value,numberFormat,false) : displayNumber(value))};
         const state = editor.getState(numberFormat);
         state.mode = 'equation';
         state.typeId = type.id;
@@ -9045,6 +9497,23 @@ function createEngine(options = {}) {
         resultDisplayMode = initialResultDisplayMode();
         engExponent = null;
     engineeringEditing = false;
+      },
+
+      // Cổng xuất dữ liệu (bridge.js): kiểu bất phương trình, hệ số đã đăng ký
+      // và, khi đang xem màn hình nghiệm, tập nghiệm dạng các khoảng số.
+      // Hai màn chọn bậc/quan hệ chưa có kiểu: type null.
+      exportData() {
+        const num = v => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+        if (!type) return { type: null, degree, relation: null, symbol: null, coefficients: [], solved: false, result: null };
+        const end = e => (e === null ? null : num(e.value));
+        return {
+          type: type.id, degree: type.degree, relation: type.relation.id, symbol: type.relation.symbol,
+          coefficients: editor.getValues().map(num),
+          solved: screen === 'result' && solved !== null,
+          result: screen === 'result' && solved ? (solved.kind === 'set'
+            ? { kind: 'set', segments: solved.segments.map(g => ({ low: end(g.low), high: end(g.high), includeLow: g.includeLow, includeHigh: g.includeHigh })) }
+            : { kind: solved.kind }) : null
+        };
       },
 
       getState() {
@@ -9365,6 +9834,17 @@ function createEngine(options = {}) {
       // Kiểu tính toán đang chọn — ui.js đọc để biết vẽ menu OPTN một/hai biến.
       getType() {
         return type;
+      },
+
+      // Cổng xuất dữ liệu (bridge.js): kiểu và bảng số liệu đang nhập.
+      exportData() {
+        return {
+          type: type.id,
+          label: type.label,
+          twoVar: !!type.twoVar,
+          frequency: !!statisticsFrequency,
+          rows: rows.map(r => ({ x: Number(r.x), y: Number(r.y), f: Number(r.f) }))
+        };
       },
 
       getState() {
@@ -10228,6 +10708,22 @@ function createEngine(options = {}) {
         return {value,exact,exactSurd:surdFromFraction(exact),exactPi:null};
       },
 
+      // Cổng xuất dữ liệu (bridge.js): hàm f, g (chuỗi trao đổi và chuỗi hiển
+      // thị), khoảng Start/End/Step và các dòng đã sinh. Ô lỗi là null.
+      exportData() {
+        const num = v => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+        const hasGeneratedRows = screen === 'table' && mode !== 'error' && !generationError;
+        const g = hasG();
+        return {
+          f: fNodes.length ? serializeForExchange(fNodes) : null,
+          fText: fNodes.length ? serializeForDisplay(fNodes) : '',
+          g: g ? serializeForExchange(gNodes) : null,
+          gText: g ? serializeForDisplay(gNodes) : '',
+          start: num(start), end: num(end), step: num(step),
+          rows: hasGeneratedRows ? xs.map((x, i) => ({ x: num(x), f: num(fVals[i]), g: g ? num(gVals[i]) : null })) : []
+        };
+      },
+
       getState() {
         if (screen === 'func') {
           return { mode: 'table', screen: 'func', prompt: editing === 'f' ? 'f(x)=' : 'g(x)=' };
@@ -10471,6 +10967,27 @@ function createEngine(options = {}) {
     viewEntry().storedVariable = name;
   }
 
+  // Cổng xuất dữ liệu khi máy đang báo lỗi: loại lỗi, biểu thức gây lỗi
+  // (chuỗi hiển thị, chuỗi trao đổi, cây gọn) và đường dẫn tới node lỗi nếu
+  // máy biết (hiện là dấu (-) đặt sai — cùng chỗ Goto đặt con trỏ).
+  // Mode có màn hình riêng (Bảng, Phương trình…) không có biểu thức chung:
+  // khi đó cây rỗng, phần dữ liệu của mode do handler trả.
+  function exportErrorInfo() {
+    const nodes = calcSession?.nodes?.length ? calcSession.nodes : root;
+    const info = { message: errorMessage, source: calcSession ? (calcSession.operation || 'calc') : null,
+      text: '', expr: null, tree: [], at: null };
+    if (!nodes || !nodes.length) return info;
+    try { info.text = serializeForDisplay(nodes); } catch (_) { /* giữ chuỗi rỗng */ }
+    info.expr = serializeForExchange(nodes);
+    info.tree = exportExpressionTree(nodes);
+    if (errorMessage === 'Syntax ERROR') {
+      try { serializeForEval(nodes); } catch (error) {
+        if (error && error.expressionNode) info.at = expressionNodePath(nodes, error.expressionNode);
+      }
+    }
+    return info;
+  }
+
   function displayString() {
     return serializeForDisplay(root);
   }
@@ -10550,6 +11067,15 @@ function createEngine(options = {}) {
       return { list, index: index - openRun };
     }
     const prev = list[index - 1];
+    const postfixOwner = plusModel && prev.ch === '²' && findListOwner(root, list);
+    if (plusModel && !usesLineInput() && prev.ch === '²' &&
+        postfixOwner?.node.type === 'times10' && postfixOwner.node.literalMultiply) {
+      // PLUS 2026-11-23: deleting this fixed square removes its digit,
+      // retaining an editable exponent placeholder (3² → 3^□).
+      const exp = [];
+      list.splice(index - 1, 1, {type: 'sup', exp});
+      return {list: exp, index: 0};
+    }
     if (prev.type === 'angle') {
       list.splice(index - 1, 1, ...prev.arg);
       return { list, index: index - 1 + prev.arg.length };
@@ -10665,6 +11191,10 @@ function createEngine(options = {}) {
           insertNodes([{type:'char',ch:'÷R'}]);
         } else if (op === 'P' || op === 'C') {
           insertNodes([{ type: 'char', ch: op, combinatoric: true }]);
+        } else if (plusModel && op === '²' && cursorList[cursorIndex - 1]?.type === 'scientific') {
+          // This postfix is an editable power on the complete scientific
+          // number; LEFT enters its digit and DEL retains its empty slot.
+          insertNodes([{type: 'sup', exp: charNodes('2')}]);
         } else insertText(op);
       };
       if (calcSession && calcSession.phase === 'result') calcSession = null;
@@ -10703,7 +11233,12 @@ function createEngine(options = {}) {
       // CASIO chính thức 2026-09-30 cho `2 ×10ˣ 3 + 1 = 2001` mà không cần
       // bấm ▶. Phím (−) đổi dấu đi qua inputNegative nên vẫn nằm trong mũ.
       const times10Owner = findListOwner(root, cursorList);
-      if (times10Owner && times10Owner.node.type === 'times10' && cursorList.length > 0) {
+      // PLUS 2026-11-23: the default ×10ˣ (Power) setting keeps operators
+      // inside its exponent until ▶ is pressed, including postfix ²/%/⁻¹
+      // and binary +. Scientific notation uses a different editor; keep
+      // its existing handling separate until that complete flow is matched.
+      const leavesScientificExponent = !plusModel || !times10Owner?.node.literalMultiply;
+      if (times10Owner && times10Owner.node.type === 'times10' && cursorList.length > 0 && leavesScientificExponent) {
         cursorList = times10Owner.parentList;
         cursorIndex = times10Owner.index + 1;
       }
@@ -10749,7 +11284,8 @@ function createEngine(options = {}) {
     inputPower() {
       ensureFreshInputIfNeeded();
       if (plusModel && usesLineInput()) { insertText('^('); return displayString(); }
-      if (plusModel && cursorList[cursorIndex - 1]?.type === 'sup') return displayString();
+      const previous = cursorList[cursorIndex - 1];
+      if (plusModel && (previous?.type === 'sup' || previous?.type === 'times10' && previous.literalMultiply)) return displayString();
       return insertTemplate({ type: 'sup', exp: [] });
     },
 
@@ -10773,6 +11309,20 @@ function createEngine(options = {}) {
     inputTimesTenPower(groupMantissa = true) {
       ensureFreshInputIfNeeded();
       if (plusModel && usesLineInput()) { insertText('×10^('); return displayString(); }
+      if (plusModel && groupMantissa) {
+        const owner = findListOwner(root, cursorList);
+        if (owner?.node.type === 'scientific' && cursorList === owner.node.exp) return displayString();
+        let start = cursorIndex;
+        while (start > 0 && cursorList[start - 1].type === 'char' && /^[0-9.]$/.test(cursorList[start - 1].ch) &&
+            !cursorList[start - 1].constant) start--;
+        const mantissa = cursorList.splice(start, cursorIndex - start);
+        cursorIndex = start;
+        const node = {type: 'scientific', notation: true, mantissa, exp: []};
+        if (insertNodes([node]) === false) return displayString();
+        cursorList = node.exp;
+        cursorIndex = 0;
+        return displayString();
+      }
       return insertTemplate({ type: 'times10', exp: [], ...(groupMantissa ? {} : {literalMultiply: true}) });
     },
 
@@ -10830,7 +11380,7 @@ function createEngine(options = {}) {
       if (usesLineInput()) return this.inputOperator('┘');
       ensureFreshInputIfNeeded();
 
-      const absorbed = absorbTrailingNumber();
+      const absorbed = plusModel ? absorbFractionOperand880() : absorbTrailingNumber();
       const frac = { type: 'frac', num: absorbed, den: [] };
       insertNodes([frac]);
       cursorList = absorbed.length > 0 ? frac.den : frac.num;
@@ -11040,6 +11590,10 @@ function createEngine(options = {}) {
         if (plusModel && emptyCellDraft && (calcMode==='table' && modeHandler.getState().screen==='range' ||
             calcMode==='distribution' && ['params','variable'].includes(modeHandler.getState().screen)))
           return displayString();
+        // PLUS 2026-11-23: RIGHT edits the selected Distribution parameter
+        // in a blank field, just as EXE does; it does not select the next row.
+        if (plusModel && calcMode === 'distribution' && direction === 'right' &&
+            modeHandler.openParameterEdit()) return displayString();
         return modeHandler.moveCursor(direction, horizontalLimit);
       }
       // Màn hình lỗi mời "[◀][▶]:Goto" — ĐÃ XÁC NHẬN 2026-08-17: đang ở Math
@@ -11048,8 +11602,16 @@ function createEngine(options = {}) {
       // ensureFreshInputIfNeeded và xoá sạch biểu thức — mất công gõ lại.
       // (AC vẫn là "Cancel", tức xoá — xem clear().)
       if (mode === 'error' && (direction === 'left' || direction === 'right')) {
-        const owner = plusModel && errorMessage === 'Math ERROR' && findListOwner(root,cursorList);
-        if (owner && ['frac','mixed'].includes(owner.node.type) && cursorList === owner.node.den) {
+        const owner = plusModel && errorMessage === 'Math ERROR' ? findListOwner(root,cursorList) : null;
+        // PLUS 2026-11-23: when the final literal power is in range but
+        // the outer arithmetic overflows, Goto leaves it for the baseline.
+        // An overflowing exponent expression (99²) retains its inner caret.
+        const exponentText = owner?.node.type === 'times10' && owner.node.literalMultiply && owner.node.exp.every(n => n.type === 'char')
+          ? owner.node.exp.map(n => n.ch).join('').replace(/−/g, '-') : '';
+        const finiteLiteralPower = /^-?\d+(?:\.\d*)?$/.test(exponentText) &&
+          Number(exponentText) >= -99 && Number(exponentText) <= 99;
+        if (owner && (finiteLiteralPower ||
+            ['frac','mixed'].includes(owner.node.type) && cursorList === owner.node.den)) {
           cursorList = owner.parentList;
           cursorIndex = owner.index + 1;
         }
@@ -11175,8 +11737,13 @@ function createEngine(options = {}) {
           const owner = findListOwner(root, cursorList);
           if (owner) {
             const slots = horizontalSlots(owner.node);
-            const next = plusModel && !usesLineInput() && owner.node.type === 'frac'
-              ? null : slots[slots.indexOf(cursorList) + 1];
+            // PLUS: RIGHT from either integration bound enters the integrand.
+            // LEFT keeps its existing path; the bound columns are not a cycle.
+            const next = plusModel && owner.node.type === 'integral' &&
+                [owner.node.lower, owner.node.upper].includes(cursorList)
+              ? owner.node.body
+              : plusModel && !usesLineInput() && owner.node.type === 'frac'
+                ? null : slots[slots.indexOf(cursorList) + 1];
             cursorList = next || owner.parentList;
             cursorIndex = next ? 0 : owner.index + 1;
           } else if (wrapScalar) cursorIndex=0;
@@ -11250,7 +11817,8 @@ function createEngine(options = {}) {
       }
       // On PLUS, choosing Calculate again from HOME also clears PreAns.
       // Internal mode resets can retain it (Settings & Data).
-      if (calcMode === 'calculate' && (name !== 'calculate' || (plusModel && reenter))) {
+      if (calcMode === 'calculate' &&
+          ((name !== 'calculate' && !(plusModel && name === 'verify')) || (plusModel && reenter))) {
         preAns = 0;
         variablesExact.PreAns = ZERO_FRACTION;
         variablesExactSurd.PreAns = ZERO_SURD;
@@ -11295,6 +11863,36 @@ function createEngine(options = {}) {
 
     getCalcMode() {
       return calcMode;
+    },
+
+    // Cổng xuất dữ liệu cho ứng dụng khác (bridge.js, xem docs/CONG-XUAT-DU-LIEU.md).
+    // Chỉ ĐỌC trạng thái, không đổi màn hình, con trỏ hay phép tính.
+    // v: phiên bản định dạng. Tính toán: biểu thức (nhập đang gõ hoặc mục kết
+    // quả đang xem) và giá trị; Bảng, Thống kê: do handler của mode trả.
+    exportData() {
+      const base = { v: 1, mode: calcMode, angleUnit };
+      // Đang báo lỗi: thêm `error` (loại lỗi, biểu thức gây lỗi dạng cây và
+      // vị trí node lỗi khi máy biết) để trang chứa giải thích cách sửa.
+      if (mode === 'error') base.error = exportErrorInfo();
+      if (modeHandler && typeof modeHandler.exportData === 'function') {
+        return { ...base, ...modeHandler.exportData() };
+      }
+      if (calcMode === 'calculate') {
+        if (calcSession?.phase === 'form' || calcSession?.operation === 'solve') {
+          return { ...base, unsupported: true };
+        }
+        const entry = mode === 'result' ? viewEntry() : null;
+        const nodes = entry?.nodes || (mode === 'input' ? root : []);
+        const value = Number.isFinite(entry?.value) ? entry.value : null;
+        return {
+          ...base,
+          angleUnit: entry?.angleUnit ?? angleUnit,
+          expr: !entry?.calc && nodes.length ? serializeForExchange(nodes) : null,
+          text: nodes.length ? serializeForDisplay(nodes) : '',
+          value
+        };
+      }
+      return { ...base, unsupported: true };
     },
 
     // Các lệnh điều hướng màn hình của OPTN Matrix.
@@ -11767,11 +12365,12 @@ function createEngine(options = {}) {
     },
 
     // Mục SETUP `Input/Output`. Đổi mục này XOÁ SẠCH màn hình và lịch sử —
-    // xem chú thích ở wipeScreenAndHistory().
-    setInputOutput(value) {
+    // xem chú thích ở wipeScreenAndHistory(). Chuyển ứng dụng PLUS dùng định dạng
+    // nhập riêng (Bảng tính/Đường thẳng số) nhưng vẫn giữ các hàm f/g đã đăng ký.
+    setInputOutput(value, {preserveRegisteredFunctions = false} = {}) {
       if (['mathio', 'mathido', 'lineio', 'lineido'].includes(value)) {
         if (plusModel) overwriteInput = false;
-        if (plusModel && value.startsWith('line') !== inputOutput.startsWith('line')) {
+        if (plusModel && !preserveRegisteredFunctions && value.startsWith('line') !== inputOutput.startsWith('line')) {
           storeRegisteredFunction('f', []);
           storeRegisteredFunction('g', []);
         }
@@ -11814,6 +12413,13 @@ function createEngine(options = {}) {
 
     getEquationComplexResults() {
       return equationComplexResults;
+    },
+
+    equationVerificationCommand(command) {
+      if(!plusModel || calcMode!=='equation') return;
+      resetDocument();
+      mode='input';
+      modeHandler.verificationCommand(command);
     },
 
     setDecimalMark(value) {
@@ -11974,7 +12580,7 @@ function createEngine(options = {}) {
 
     isVerifyActive() {
       return calcMode === 'verify' || (calcMode === 'complex' && complexVerify) ||
-        (plusModel && calcMode === 'table' && !!(modeHandler || variableEditor?.modeHandler)?.verifying());
+        (plusModel && ['table','equation'].includes(calcMode) && !!(modeHandler || variableEditor?.modeHandler)?.verifying());
     },
 
     toggleComplexVerify() {
@@ -11999,7 +12605,7 @@ function createEngine(options = {}) {
     // Ở mode Complex, phím ENG đổi ngữ cảnh thành đơn vị ảo i.
     // ĐÃ XÁC NHẬN 2026-09-11 bằng chuỗi 2+3i trên giả lập CASIO chính thức.
     inputImaginary() {
-      if (calcMode !== 'complex') return displayString();
+      if (calcMode !== 'complex' && !(plusModel && calcMode==='equation' && modeHandler?.verifyComplexInput())) return displayString();
       ensureFreshInputIfNeeded();
       if (plusModel) insertNodes([{type:'char', ch:'i', imaginary:true}]);
       else insertText('i');
@@ -12112,7 +12718,7 @@ function createEngine(options = {}) {
     },
 
     inputPreAns() {
-      if (calcMode !== 'calculate') return displayString();
+      if (calcMode !== 'calculate' && !(plusModel && calcMode === 'verify')) return displayString();
       ensureFreshInputIfNeeded();
       insertText('PreAns');
       return displayString();
@@ -12308,6 +12914,17 @@ function createEngine(options = {}) {
     },
 
     equals() {
+      if (plusModel && mode === 'input') {
+        // EXE commits the notation's visible group even when validation
+        // fails. BACK and subsequent correction retain its parentheses.
+        const commitGroups = nodes => {
+          for (const node of nodes) {
+            if (node.type === 'scientific' && node.mantissa.length) node.parenthesized = true;
+            for (const slot of templateSlots(node)) commitGroups(slot);
+          }
+        };
+        commitGroups(root);
+      }
       editUndo = null;
       const currentEntry = mode === 'result' ? viewEntry() : null;
       if (plusModel && currentEntry?.complex !== undefined) currentEntry.complexHorizontalOffset = 0;
@@ -12345,7 +12962,8 @@ function createEngine(options = {}) {
         // ô kế (gõ "2+3" vào ô A của Ratio, "=" ghi 5 rồi nhảy sang ô B).
         // Không gõ dở → coi như đã nhập xong, yêu cầu giải.
         if (handlerIsEditing() && hasDraft()) {
-          const cellValue = evaluateCurrentValue();
+          const cellValue = plusModel && calcMode==='equation' && modeHandler.verifyComplexInput()
+            ? evaluateCurrentComplexValue() : evaluateCurrentValue();
           if (!cellValue.ok) return;
           if (plusModel && calcMode === 'table' && modeHandler.checkValue(cellValue.value)) return;
           const arrayCell = plusModel && (calcMode === 'matrix' || calcMode === 'vector');
@@ -12966,7 +13584,7 @@ function createEngine(options = {}) {
             const parts = polar ? complexPolarParts(entry.complex, numberFormat, angleUnit, preserveSmall, exact, exact, !exact) :
               entry.complexAngleResult && entry.complex.im === 0 && exact
                 ? {left:formatPolarAngle(entry.complex.re, numberFormat, angleUnit), separator:'', right:''}
-                : complexRectangularParts(entry.complex, numberFormat, exact, exact && entry.complexRoundedComponents, preserveSmall, !exact, plusModel);
+                : complexRectangularParts(entry.complex, numberFormat, exact, exact && entry.complexRoundedComponents, preserveSmall, !exact, plusModel, entry.complexAlgebraic);
             const mixedComponent = text => text.replace(/^([−-]?)(\d+)\/(\d+)(i?)$/, (fraction, sign, n, d, unit) => {
               const numerator = BigInt(n), denominator = BigInt(d);
               return numerator > denominator ? sign + numerator / denominator + ' ' + numerator % denominator + '/' + d + unit : fraction;
@@ -13115,6 +13733,9 @@ function createEngine(options = {}) {
       // Khung chu kỳ chỉ nhận chữ số; các phím soạn biểu thức khác bị bỏ
       // qua. STO/ALPHA vẫn nhận phím chọn biến; = và mũi tên dùng API riêng.
       const recurring = mode === 'input' && findListOwner(root, cursorList)?.node.type === 'recurring';
+      const scientificOwner = plusModel && mode === 'input' && findListOwner(root, cursorList);
+      if (scientificOwner && scientificOwner.node.type === 'scientific' && cursorList === scientificOwner.node.exp &&
+          name.startsWith('input') && !['inputDigit', 'inputNegative'].includes(name)) return displayString();
       const storeTarget = pendingRegister === 'sto' && ['inputVariable', 'inputXVariable'].includes(name);
       if (recurring && name.startsWith('input') && !storeTarget &&
           !['inputDigit', 'inputAlpha', 'inputSto'].includes(name)) {

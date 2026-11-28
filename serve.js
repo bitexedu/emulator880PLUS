@@ -4,7 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const root = path.join(__dirname, 'web');
+const root = path.resolve(process.env.BITEX_880_ROOT || path.join(__dirname, 'web'));
 const host = '127.0.0.1';
 const port = Number(process.env.BITEX_880_PORT || 8870);
 

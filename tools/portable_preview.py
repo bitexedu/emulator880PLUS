@@ -18,9 +18,11 @@ def build_portable(web: Path, destination: Path):
     if not scripts or scripts[-1] != 'app.js':
         raise ValueError('Portable demo requires the normal ordered calculator scripts')
     html = re.sub(r'\s*<script defer src="[^"]+"></script>', '', html)
-    css = (web / 'device.css').read_text()
-    css = re.sub(r'url\((assets/[^)]+)\)', lambda m: 'url("' + assets[m[1]] + '")', css)
-    html = html.replace('<link rel="stylesheet" href="device.css">', '<style>\n' + css + '\n</style>')
+    for stylesheet in re.findall(r'<link rel="stylesheet" href="([^"]+)">',html):
+        css = (web / stylesheet).read_text()
+        css = re.sub(r'url\((assets/[^)]+)\)', lambda m: 'url("' + assets[m[1]] + '")', css)
+        html = html.replace('<link rel="stylesheet" href="' + stylesheet + '">', '<style>\n' + css + '\n</style>')
+    html = re.sub(r'\s*<link rel="manifest"[^>]+>', '', html)
     html = re.sub(r'(?:src|href)="(assets/[^"]+)"', lambda m: m[0].replace(m[1], assets[m[1]]), html)
 
     source_blocks = ['const BUNDLED_ASSETS880 = ' + json.dumps(assets, separators=(',', ':')) + ';']
